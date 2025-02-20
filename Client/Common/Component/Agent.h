@@ -246,6 +246,7 @@ public:
 
 public:
 	void PathPlanningToAstarOnlyReader(const Pos& dest);
+	void PathPlanningToFlowField(const Pos& dest);
 	void AllAgentPathPlanning(const Pos& dest);
 	void StartMoveToPath();
 	void RenderPathList();

@@ -104,6 +104,7 @@ public:
 	rsptr<Object>GetGameManager() const { return mGameManager; }
 
 	bool			CanGoNextVoxel(const Pos& pos) const;
+	bool			CanGoNextVoxel(const Vec3& pos) const;
 	int				GetGridIndex(const Pos& index) const;
 	int				GetGridIndex(Vec3 pos) const;
 	Pos				GetVoxelIndex(const Vec3& pos) const;
