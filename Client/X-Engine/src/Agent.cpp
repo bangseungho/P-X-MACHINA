@@ -273,9 +273,12 @@ std::vector<Vec3> Agent::PathPlanningToAstar(const Pos& dest, const std::unorder
 			path.push(pos);
 		}
 
+		AgentManager::I->PushFlowField(parent[pos], Scene::I->GetVoxelPos(pos));
 		pos = parent[pos];
 		prevDir = dir;
 	}
+
+	
 
 	// 시작점이 적용되지 않을 수 있음
 	if (!path.empty() && path.top() != mStart && inputDest) {
@@ -922,6 +925,16 @@ void Agent::RenderCloseList()
 	}
 }
 
+void AgentManager::AddAgent(Agent* agent)
+{
+	agent->SetAgentID(++mAgentIDs); 
+	mAgents.push_back(agent);
+
+	if (!mReader) {
+		mReader = agent;
+	}
+}
+
 Vec3 AgentManager::GetFlowFieldDirection(const Pos& index)
 {
 	if (mFlowFieldMap.count(index)) {
@@ -964,6 +977,7 @@ void AgentManager::Start()
 
 void AgentManager::Update()
 {
+	std::cout << mFlowFieldMap.size() << '\n';
 	for (int i = 0; i < static_cast<int>(mAgents.size()); ++i) {
 		mAgents[i]->SetPreferredVelocity();
 	}
@@ -978,6 +992,71 @@ void AgentManager::Update()
 	for (int i = 0; i < static_cast<int>(mAgents.size()); ++i) {
 		mAgents[i]->UpdatePosition();
 	}
+}
+
+void AgentManager::CopyFlowField()
+{
+	std::vector<std::pair<Pos, Vec3>> temp{};
+	for (int i = 0; i < 10; ++i) {
+		for (auto& [index, pos] : mFlowFieldMap) {
+			temp.push_back({ index.Forward(), pos + Vec3{0.f, 0.f, 0.5f } });
+		}
+
+		for (const auto& v : temp) {
+			mFlowFieldMap.insert(v);
+		}
+	}
+
+	for (int i = 0; i < 10; ++i) {
+		for (auto& [index, pos] : mFlowFieldMap) {
+			temp.push_back({ index.Backward(), pos + Vec3{0.f, 0.f, -0.5f } });
+		}
+
+		for (const auto& v : temp) {
+			mFlowFieldMap.insert(v);
+		}
+	}
+
+	for (int i = 0; i < 10; ++i) {
+		for (auto& [index, pos] : mFlowFieldMap) {
+			temp.push_back({ index.Left(), pos + Vec3{ -0.5f, 0.f, 0.f } });
+		}
+
+		for (const auto& v : temp) {
+			mFlowFieldMap.insert(v);
+		}
+	}
+
+	for (int i = 0; i < 10; ++i) {
+		for (auto& [index, pos] : mFlowFieldMap) {
+			temp.push_back({ index.Right(), pos + Vec3{ 0.5f, 0.f, 0.f } });
+		}
+
+		for (const auto& v : temp) {
+			mFlowFieldMap.insert(v);
+		}
+	}
+
+}
+
+void AgentManager::PushFlowField(const Pos& index, const Vec3& pos)
+{
+	mFlowFieldMap.insert({ index, pos });
+}
+
+void AgentManager::PathPlanningToAStarOnlyReader(const Pos& dest)
+{
+	if (!mReader) {
+		return;
+	}
+
+	mReader->ReadyPlanningToPath(mReader->GetVoxelIndex());
+	mReader->PathPlanningToAstar(dest, {});
+	CopyFlowField();
+
+	//for (auto agent : mAgents) {
+	//	agent->mPrevNextPos = mReader->GetWorldPosition();
+	//}
 }
 
 void AgentManager::PathPlanningToFlowField(const Pos& dest)

@@ -212,6 +212,7 @@ private:
 	std::unordered_map<Pos, Vec3> mFlowFieldMap{};
 
 	int mAgentIDs{};
+	Agent* mReader{};
 	std::vector<Agent*> mAgents{};
 	bool mFinishAllAgentMoveToPath{};
 
@@ -219,7 +220,7 @@ public:
 	const bool IsFinishAllAgentMoveToPath() const { return mFinishAllAgentMoveToPath; }
 
 public:
-	void AddAgent(Agent* agent) { agent->SetAgentID(++mAgentIDs); mAgents.push_back(agent); }
+	void AddAgent(Agent* agent);
 	//void RemoveAgent(Agent* agent) { mAgents.erase(agent); }
 	void SetAgentPrefVelocity(int agentNo, const Vec3& prefVelocity) { mAgents[agentNo]->mPrefVelocity = prefVelocity; }
 	Vec3 GetFlowFieldDirection(const Pos& pos);
@@ -234,6 +235,10 @@ public:
 	void Update();
 
 public:
+	void ClearFlowField() { mFlowFieldMap.clear(); }
+	void CopyFlowField();
+	void PushFlowField(const Pos& index, const Vec3& pos);
+	void PathPlanningToAStarOnlyReader(const Pos& dest);
 	void PathPlanningToFlowField(const Pos& dest);
 	void AllAgentPathPlanning(const Pos& dest);
 	void StartMoveToPath();

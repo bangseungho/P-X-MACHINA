@@ -260,7 +260,9 @@ void VoxelManager::UpdatePlanningPathMode(bool makePath, VoxelState selectedVoxe
 		return;
 	}
 
-	AgentManager::I->PathPlanningToFlowField(mSelectedVoxel);
+	AgentManager::I->ClearFlowField();
+	AgentManager::I->PathPlanningToAStarOnlyReader(mSelectedVoxel);
+	//AgentManager::I->PathPlanningToFlowField(mSelectedVoxel);
 
 	//if (!mPickedAgent) {
 	//	return;
