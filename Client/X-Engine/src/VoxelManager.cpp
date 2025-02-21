@@ -236,6 +236,7 @@ void VoxelManager::UpdateCreateMode(VoxelState selectedVoxelState)
 
 	mUsedCreateModeVoxels.insert(mSelectedVoxel.XZ());
 	Scene::I->UpdateVoxelsProximityCost(mSelectedVoxel);
+	AgentManager::I->EraseFlowFieldPos(mSelectedVoxel);
 }
 
 void VoxelManager::UpdateRemoveMode(VoxelState selectedVoxelState)

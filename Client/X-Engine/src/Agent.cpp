@@ -50,7 +50,7 @@ void Agent::Start()
 	mObject->GetComponent<ObjectCollider>()->SetScale(0.4f);
 	mObject->SetPosition(100.f, 0, 260.f);
 	mPathTarget = mObject->GetPosition();
-	mMaxNeighbors = 0;
+	mMaxNeighbors = 1;
 	mNeighborDist = 3.f;
 	mTimeHorizon = 2.5f;
 	mRadius = 0.2f;
@@ -131,7 +131,14 @@ void Agent::UpdatePosition()
 	//	}
 	//}
 
-	mObject->SetPosition(mObjectPos + mVelocity * DeltaTime());
+	if (mUseFlowField) {
+		const Vec3& target = AgentManager::I->GetFlowFieldPos(mVoxelIndex);
+		const Vec3& dir = Vector3::Normalized(target - mObjectPos);
+		mObject->SetPosition(mObjectPos + dir * mOption.AgentSpeed * DeltaTime());
+	}
+	else {
+		mObject->SetPosition(mObjectPos + mVelocity * DeltaTime());
+	}
 }
 
 void Agent::UpdateBegin()
@@ -160,14 +167,13 @@ void Agent::UpdateBegin()
 
 	bool isPopPath{};
 	while (!mPath.empty()) {
-		if (!Scene::I->CanGoNextVoxel(Scene::I->GetVoxelIndex(mPath.back()).Up())) {
-			mPath.pop_back();
-
-			if (!mPath.empty()) {
-				mPathTarget = mPath.back();
+		if (!Scene::I->CanGoNextVoxel(mPathTarget)) {
+			for (int i = 0; i < 3; ++i) {
+				if (!mPath.empty()) {
+					mPathTarget = mPath.back();
+					mPath.pop_back();
+				}
 			}
-
-			isPopPath = true;
 		}
 		else {
 			break;
@@ -176,11 +182,8 @@ void Agent::UpdateBegin()
 
 	if (!mPath.empty()) {
 		if (mVoxelIndex == Scene::I->GetVoxelIndex(mPathTarget)) {
+			mPathTarget = mPath.back();
 			mPath.pop_back();
-
-			if (!mPath.empty()) {
-				mPathTarget = mPath.back();
-			}
 		}
 	}
 	//if (isPopPath) {
@@ -234,6 +237,12 @@ void Agent::UpdateBegin()
 //	//mGlobalTarget[mDestIndex] = mDestPos;
 //}
 
+void Agent::SetPathDest(const Vec3& dest)
+{
+	mDestPos = dest;
+	mDestIndex = Scene::I->GetVoxelIndex(dest);
+}
+
 std::vector<Vec3> Agent::PathPlanningToAstar(const Pos& dest, const std::unordered_map<Pos, int>& avoidCostMap, bool clearPathList, bool inputDest, int maxOpenNodeCount)
 {
 	if (clearPathList) {
@@ -241,6 +250,9 @@ std::vector<Vec3> Agent::PathPlanningToAstar(const Pos& dest, const std::unorder
 	}
 
 	std::vector<Vec3> finalPath{};
+	if (!Scene::I->CanGoNextVoxel(mStartIndex.Up())) {
+		return finalPath;
+	}
 
 	mDestIndex = dest;
 	std::stack<Pos>	path{};
@@ -285,7 +297,12 @@ std::vector<Vec3> Agent::PathPlanningToAstar(const Pos& dest, const std::unorder
 
 		visited[curNode.Pos] = true;
 
-		for (int dir = 0; dir < 8; ++dir) {
+		int dirCnt = 8;
+		if (!inputDest) {
+			dirCnt = 4;
+		}
+
+		for (int dir = 0; dir < dirCnt; ++dir) {
 			Pos nextPosZX = curNode.Pos + gkFront[dir];
 			PairMapRange range = Scene::I->GetCanWalkVoxels(nextPosZX);
 			for (auto it = range.first; it != range.second; ++it) {
@@ -319,12 +336,12 @@ std::vector<Vec3> Agent::PathPlanningToAstar(const Pos& dest, const std::unorder
 	}
 
 	//// 경로 설정 실패
-	//if (failedPlanningPath || pq.empty()) {
-	//	ClearPathList();
-	//	ClearPath();
-	//	mDest = AgentManager::I->FindEmptyDestVoxel(this);
-	//	return finalPath;
-	//}
+	if (failedPlanningPath || pq.empty()) {
+		//ClearPathList();
+		//ClearPath();
+		//mDestIndex = AgentManager::I->FindEmptyDestVoxel(this);
+		return finalPath;
+	}
 
 	Pos pos = curNode.Pos;
 	// 부모를 통해 경로 설정
@@ -362,25 +379,12 @@ void Agent::ReadyPlanningToPath(const Pos& start)
 
 void Agent::RePlanningToPathAvoidStatic()
 {
-	if (!Vector3::IsZero(AgentManager::I->GetFlowFieldPos(mVoxelIndex))) {
-		return;
+	const Vec3& fieldPos = AgentManager::I->GetFlowFieldPos(mVoxelIndex);
+	if (Vector3::IsZero(fieldPos)) {
+		mStartIndex = mVoxelIndex;
+		mOption.Heuri = Heuristic::Euclidean;
+		PathPlanningToAstar(Scene::I->GetVoxelIndex(mPathTarget), {}, false, false, 1000);
 	}
-
-	//if (!Scene::I->CanGoNextVoxel(mVoxelIndex.Up())) {
-	//	mStartIndex = mVoxelIndex;
-	//	mOption.Heuri = Heuristic::Euclidean;
-	//	PathPlanningToAstar(Scene::I->GetVoxelIndex(mPathTarget), {}, false, false);
-	//}
-
-	//Pos nextPathIndex = Scene::I->GetVoxelIndex(GetCrntPathDir());
-
-
-	//if (!Scene::I->CanGoNextVoxel(nextPathIndex.Up())) {
-	//	mStartIndex = mVoxelIndex;
-	//	mOption.Heuri = Heuristic::Euclidean;
-	//	//mPrevNextPos = mGlobalTarget[nextPathIndex];
-	//	//PathPlanningToAstar(Scene::I->GetVoxelIndex(mGlobalTarget[nextPathIndex]), {}, false, false);
-	//}
 }
 
 void Agent::InsertAgentNeightbor(const Agent* agent, float& rangeSq)
@@ -837,11 +841,21 @@ void AgentManager::Update()
 	for (auto agent : mAgents) {
 		agent->UpdateBegin();
 
+		if (agent == VoxelManager::I->GetPickedAgent()) {
+			int a = 3;
+		}
+
 		Vec3 target = agent->GetPathTarget();
 		Pos targetIndex = Scene::I->GetVoxelIndex(target);
 		int dx = agent->mVoxelIndex.X - targetIndex.X;
 		int dz = agent->mVoxelIndex.Z - targetIndex.Z;
-		if (std::sqrt(dx * dx + dz * dz) >= 2) {
+		agent->mUseFlowField = false;
+		float length = std::sqrt(dx * dx + dz * dz);
+		float toDest = (agent->mDestPos - agent->mObjectPos).Length();
+		//agent->mOption.AgentSpeed = std::clamp(toDest / 2.f, 1.5f, 3.5f);
+		agent->mOption.AgentSpeed = std::clamp(length, 1.5f, 3.5f);
+		if (length >= 2.f) {
+			agent->mUseFlowField = true;
 			agent->RePlanningToPathAvoidStatic();
 			target = AgentManager::I->GetFlowFieldPos(agent->mVoxelIndex);
 		}
@@ -877,7 +891,10 @@ void AgentManager::PathPlanningToAstarOnlyReader(const Pos& dest)
 			path.push_back(newPoint);
 		}
 		
-		agent->SetPath(std::move(path));
+		if (!path.empty()) {
+			agent->SetPathDest(path.front());
+			agent->SetPath(std::move(path));
+		}
 	}
 }
 

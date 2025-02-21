@@ -100,6 +100,7 @@ class Agent : public Component {
 
 public:
 	AgentOption mOption{};
+	bool mUseFlowField{};
 
 private:
 	Vec3 mPathTarget{};
@@ -158,12 +159,13 @@ public:
 	const bool		IsStart() const { return mIsStart; }
 
 public:
-	void SetPath(std::vector<Vec3>&& path) { mPath = path; mPathTarget = mPath.back(); }
+	void SetPath(std::vector<Vec3>&& path) { mPath = path; if (!path.empty()) { mPathTarget = mPath.back(); } }
 
 	void SetWorldMatrix(const Matrix& mtxWorld) { return mObject->SetWorldTransform(mtxWorld); }
 	void SetStartMoveToPath(bool isStart) { mIsStart = isStart; }
 	void SetAngleSpeedRatio(float ratio) { mAngleSpeedRatio = ratio; }
 	void SetAgentID(int id) { mAgentID = id; }
+	void SetPathDest(const Vec3& dest);
 	void SetPathDest(const Pos& dest) { mDestIndex = dest; }
 	void SetFormationOffset(const Vec3& offset) { mFormationOffset = offset; }
 
@@ -233,6 +235,7 @@ public:
 public:
 	void AddAgent(Agent* agent);
 	void SetAgentPrefVelocity(int agentNo, const Vec3& prefVelocity) { mAgents[agentNo]->mPrefVelocity = prefVelocity; }
+	void EraseFlowFieldPos(const Pos& pos) { mFlowFieldMap.erase(pos); }
 	Vec3 GetFlowFieldDirection(const Pos& pos);
 	Vec3 GetFlowFieldPos(const Pos& pos);
 
@@ -245,6 +248,7 @@ public:
 	void Update();
 
 public:
+	void PathPlanningToFlowField(const Pos& dest);
 	void PathPlanningToAstarOnlyReader(const Pos& dest);
 	void AllAgentPathPlanning(const Pos& dest);
 	void StartMoveToPath();

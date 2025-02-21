@@ -874,7 +874,7 @@ bool Scene::CanGoNextVoxel(const Pos& pos) const
 
 bool Scene::CanGoNextVoxel(const Vec3& pos) const
 {
-	return CanGoNextVoxel(GetVoxelIndex(pos));
+	return CanGoNextVoxel(GetVoxelIndex(pos).Up());
 }
 
 //////////////////* Others *//////////////////
