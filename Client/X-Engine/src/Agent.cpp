@@ -997,7 +997,7 @@ void AgentManager::Update()
 void AgentManager::CopyFlowField()
 {
 	std::vector<std::pair<Pos, Vec3>> temp{};
-	for (int i = 0; i < 10; ++i) {
+	for (int i = 0; i < 3; ++i) {
 		for (auto& [index, pos] : mFlowFieldMap) {
 			temp.push_back({ index.Forward(), pos + Vec3{0.f, 0.f, 0.5f } });
 		}
@@ -1007,7 +1007,7 @@ void AgentManager::CopyFlowField()
 		}
 	}
 
-	for (int i = 0; i < 10; ++i) {
+	for (int i = 0; i < 3; ++i) {
 		for (auto& [index, pos] : mFlowFieldMap) {
 			temp.push_back({ index.Backward(), pos + Vec3{0.f, 0.f, -0.5f } });
 		}
@@ -1017,7 +1017,7 @@ void AgentManager::CopyFlowField()
 		}
 	}
 
-	for (int i = 0; i < 10; ++i) {
+	for (int i = 0; i < 3; ++i) {
 		for (auto& [index, pos] : mFlowFieldMap) {
 			temp.push_back({ index.Left(), pos + Vec3{ -0.5f, 0.f, 0.f } });
 		}
@@ -1027,7 +1027,7 @@ void AgentManager::CopyFlowField()
 		}
 	}
 
-	for (int i = 0; i < 10; ++i) {
+	for (int i = 0; i < 3; ++i) {
 		for (auto& [index, pos] : mFlowFieldMap) {
 			temp.push_back({ index.Right(), pos + Vec3{ 0.5f, 0.f, 0.f } });
 		}
@@ -1054,9 +1054,9 @@ void AgentManager::PathPlanningToAStarOnlyReader(const Pos& dest)
 	mReader->PathPlanningToAstar(dest, {});
 	CopyFlowField();
 
-	//for (auto agent : mAgents) {
-	//	agent->mPrevNextPos = mReader->GetWorldPosition();
-	//}
+	for (auto agent : mAgents) {
+		agent->mDest = Scene::I->GetVoxelIndex(Scene::I->GetVoxelPos(dest) + (mReader->GetWorldPosition() - agent->GetWorldPosition()));
+	}
 }
 
 void AgentManager::PathPlanningToFlowField(const Pos& dest)
