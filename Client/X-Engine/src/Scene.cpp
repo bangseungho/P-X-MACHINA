@@ -872,6 +872,11 @@ bool Scene::CanGoNextVoxel(const Pos& pos) const
 	return true;
 }
 
+bool Scene::CanGoNextVoxel(const Vec3& pos) const
+{
+	return CanGoNextVoxel(GetVoxelIndex(pos));
+}
+
 //////////////////* Others *//////////////////
 int Scene::GetGridIndex(const Pos& index) const {
 	const int gridX = static_cast<int>(index.X * Grid::mkVoxelWidth / kGridWidth);
