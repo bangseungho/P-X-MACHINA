@@ -261,28 +261,9 @@ void VoxelManager::UpdatePlanningPathMode(bool makePath, VoxelState selectedVoxe
 	}
 
 	AgentManager::I->ClearFlowField();
+	AgentManager::I->ClearPathList();
 	AgentManager::I->PathPlanningToAStarOnlyReader(mSelectedVoxel);
 	AgentManager::I->PathPlanningToFlowField(mSelectedVoxel);
-
-	//if (!mPickedAgent) {
-	//	return;
-	//}
-
-	//if (!mReadyMakePath) {
-
-
-
-	//	std::vector<Vec3> path = mPickedAgent->PathPlanningToAstar(mSelectedVoxel, {}, true);
-	//	if (!path.empty()) {
-	//		mPickedAgent->SetPath(path);
-	//	}
-	//	
-	//}
-	//else {
-	//	mPickedAgent->ReadyPlanningToPath(mSelectedVoxel);
-	//	mPickedAgent->ClearPathList();
-	//}
-	//mReadyMakePath = !mReadyMakePath;
 }
 
 void VoxelManager::CalcRenderVoxelCount(int renderVoxelRows)

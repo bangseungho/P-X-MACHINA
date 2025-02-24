@@ -102,6 +102,9 @@ public:
 	AgentOption mOption{};
 
 private:
+	Agent* mReader{};
+	std::unordered_map<Index, Vec3> mFieldMap{};
+
 	std::vector<Vec3>	mGlobalPath{};
 	std::vector<Vec3>	mLocalPath{};
 	std::unordered_map<Index, int> mGlobalPathCache{};
@@ -109,11 +112,13 @@ private:
 	std::unordered_map<Index, int> mPrevPathMinusCost{};
 
 	Index				mVoxelIndex{};
-	Index				mStart{};
+
+	Index				mStartIndex{};
+	Vec3				mStartPos{};
 	Index				mDestIndex{};
 	Vec3				mDestPos{};
+
 	Vec3				mPathDir{};
-	Vec3				mTarget{};
 
 	std::vector<Index>	mCloseList{};
 	std::vector<Index>	mOpenList{};
@@ -128,11 +133,14 @@ private:
 
 public:
 	virtual void Start() override;
+	virtual void Update() override;
 
 public:
 	void UpdatePosition();
 	
 public:
+	const bool		CheckContainNodeInField(const Index& index) const { return mFieldMap.count(index); }
+	const bool		IsStart() const { return mIsStart; }
 	const Index		GetPathIndex(int index) const;
 	const Index		GetDestIndex() const { return mDestIndex; }
 	const Vec3		GetDestPos() const { return mDestPos; }
@@ -141,7 +149,7 @@ public:
 	Vec3			GetWorldPosition()  { return mObject->GetPosition(); }
 	const Vec3		GetPathDirection() const { return mPathDir; }
 	const Index		GetVoxelIndex() const { return mVoxelIndex; }
-	const bool		IsStart() const { return mIsStart; }
+	const std::unordered_map<Index, Vec3>& GetFieldMap() const { return mFieldMap; }
 
 public:
 	void SetWorldMatrix(const Matrix& mtxWorld) { return mObject->SetWorldTransform(mtxWorld); }
@@ -150,9 +158,12 @@ public:
 	void SetAgentID(int id) { mAgentID = id; }
 	void SetDestIndex(const Index& destIndex);
 	void SetDestPos(const Vec3& destPos);
+	void SetStartIndex(const Index& startIndex);
+	void SetStartPos(const Vec3& startPos);
+	void SetReader(Agent* reader) { mReader = reader; }
 
 public:
-	std::vector<Vec3>	PathPlanningToAstar(const Index& dest, const std::unordered_map<Index, int>& avoidCostMap, bool clearPathList = true, bool inputDest = true, int maxOpenNodeCount = 50000);
+	std::vector<Vec3>	PathPlanningToAstar(const Index& dest, const std::unordered_map<Index, int>& avoidCostMap = {}, bool followReader = false, bool clearPathList = true, bool inputDest = true, int maxOpenNodeCount = 50000);
 	void				ReadyPlanningToPath(const Index& start);
 	void				SetPath(std::vector<Vec3>& path) { mGlobalPath = path; }
 	bool				PickAgent();
@@ -195,9 +206,15 @@ public:
 	void InsertAgentNeightbor(const Agent* agent, float& rangeSq);
 	void ComputeNeighbors();
 	void ComputeNewVelocity();
+	void UpdateFollowField();
 	void SetPreferredVelocity();
 };
 
+enum class FieldType : UINT8 {
+	None = 0,
+	Reader,
+	Flower,
+};
 
 class AgentManager : public Singleton<AgentManager> {
 	friend Singleton;
@@ -211,6 +228,7 @@ public:
 private:
 	sptr<class KdTree> mKdTree{};
 	std::unordered_map<Index, Vec3> mFlowFieldMap{};
+	std::unordered_map<Index, FieldType> mFieldTypeMap{};
 
 	int mAgentIDs{};
 	Agent* mReader{};
@@ -222,12 +240,17 @@ public:
 
 public:
 	void AddAgent(Agent* agent);
-	//void RemoveAgent(Agent* agent) { mAgents.erase(agent); }
-	void SetAgentPrefVelocity(int agentNo, const Vec3& prefVelocity) { mAgents[agentNo]->mPrefVelocity = prefVelocity; }
-	Vec3 GetFlowFieldDirection(const Index& pos);
-	Vec3 GetFlowFieldPos(const Index& pos);
 
 public:
+	template<typename T>
+	const T& GetValueToIndex(const std::unordered_map<Index, T>& map, const Index& index) const;
+	const Vec3& GetFlowFieldPos(const Index& index) const { return GetValueToIndex(mFlowFieldMap, index); };
+	FieldType GetFieldType(const Index& index) const { return GetValueToIndex(mFieldTypeMap, index); };
+	//int GetOpenListMinusCost(const Index& index) const { return GetValueToIndex(mOpenListMinusCost, index); };
+	//int GetPrevPathMinusCost(const Index& index) const { return GetValueToIndex(mPrevPathMinusCost, index); };
+
+public:
+	void SetAgentPrefVelocity(int agentNo, const Vec3& prefVelocity) { mAgents[agentNo]->mPrefVelocity = prefVelocity; }
 	void SetClimbHeightAllAgent(int height);
 	void SetAgentSpeedAllAgent(float speed);
 
@@ -236,8 +259,8 @@ public:
 	void Update();
 
 public:
-	void ClearFlowField() { mFlowFieldMap.clear(); }
-	void CopyFlowField();
+	void ClearFlowField() { mFlowFieldMap.clear(); mFieldTypeMap.clear(); }
+	void CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap);
 	void PushFlowField(const Index& index, const Vec3& pos);
 	void PathPlanningToAStarOnlyReader(const Index& dest);
 	void PathPlanningToFlowField(const Index& dest);
@@ -255,3 +278,13 @@ public:
 };
 
 #pragma endregion
+
+template<typename T>
+inline const T& AgentManager::GetValueToIndex(const std::unordered_map<Index, T>& map, const Index& index) const
+{
+	if (map.count(index)) {
+		return map.at(index);
+	}
+
+	return T{};
+}
