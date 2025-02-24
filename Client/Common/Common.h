@@ -654,17 +654,17 @@ public:
 	}
 };
 
-struct Pos
+struct Index
 {
-	bool operator==(const Pos& other) const {
+	bool operator==(const Index& other) const {
 		return Z == other.Z && X == other.X && Y == other.Y;
 	}
 
-	bool operator!=(const Pos& other) const {
+	bool operator!=(const Index& other) const {
 		return !(*this == other);
 	}
 
-	bool operator<(const Pos& other) const {
+	bool operator<(const Index& other) const {
 		if (Y != other.Y)
 			return Y < other.Y;
 		if (Z != other.Z)
@@ -672,7 +672,7 @@ struct Pos
 		return X < other.X;
 	}
 
-	bool operator>(const Pos& other) const {
+	bool operator>(const Index& other) const {
 		if (Y != other.Y)
 			return Y > other.Y;
 		if (Z != other.Z)
@@ -680,43 +680,43 @@ struct Pos
 		return X > other.X;
 	}
 
-	Pos operator+(const Pos& other) const {
-		Pos ret;
+	Index operator+(const Index& other) const {
+		Index ret;
 		ret.Z = Z + other.Z;
 		ret.X = X + other.X;
 		ret.Y = Y + other.Y;
 		return ret;
 	}
 
-	Pos& operator+=(const Pos& other) {
+	Index& operator+=(const Index& other) {
 		Z += other.Z;
 		X += other.X;
 		Y += other.Y;
 		return *this;
 	}
 
-	Pos operator-(const Pos& other) const {
-		Pos ret;
+	Index operator-(const Index& other) const {
+		Index ret;
 		ret.Z = Z - other.Z;
 		ret.X = X - other.X;
 		ret.Y = Y - other.Y;
 		return ret;
 	}
 
-	Pos& operator-=(const Pos& other) {
+	Index& operator-=(const Index& other) {
 		Z -= other.Z;
 		X -= other.X;
 		Y -= other.Y;
 		return *this;
 	}
 
-	Pos Up() const { return *this + Pos{ 0, 0, +1 }; }
-	Pos Down() const { return *this + Pos{ 0, 0, -1 }; }
-	Pos Left() const { return *this + Pos{ 0, -1, 0 }; }
-	Pos Right() const { return *this + Pos{ 0, +1, 0 }; }
-	Pos Forward() const { return *this + Pos{ +1, 0, 0 }; }
-	Pos Backward() const { return *this + Pos{ -1, 0, 0 }; }
-	Pos XZ() const { return Pos{ Z, X, 0 }; }
+	Index Up() const { return *this + Index{ 0, 0, +1 }; }
+	Index Down() const { return *this + Index{ 0, 0, -1 }; }
+	Index Left() const { return *this + Index{ 0, -1, 0 }; }
+	Index Right() const { return *this + Index{ 0, +1, 0 }; }
+	Index Forward() const { return *this + Index{ +1, 0, 0 }; }
+	Index Backward() const { return *this + Index{ -1, 0, 0 }; }
+	Index XZ() const { return Index{ Z, X, 0 }; }
 	bool IsZero() const { return Z == 0 && X == 0 && Y == 0; }
 	void Init() { Z = 0; X = 0; Y = 0; }
 
@@ -724,12 +724,12 @@ struct Pos
 		return Vec3{ static_cast<float>(Z), static_cast<float>(X), static_cast<float>(Y) };
 	}
 
-	static Pos Max(const Pos& a, const Pos& b) {
-		return Pos{ max(a.Z, b.Z), max(a.X, b.X), max(a.Y, b.Y) };
+	static Index Max(const Index& a, const Index& b) {
+		return Index{ max(a.Z, b.Z), max(a.X, b.X), max(a.Y, b.Y) };
 	}
 
-	static Pos Min(const Pos& a, const Pos& b) {
-		return Pos{ min(a.Z, b.Z), min(a.X, b.X), min(a.Y, b.Y) };
+	static Index Min(const Index& a, const Index& b) {
+		return Index{ min(a.Z, b.Z), min(a.X, b.X), min(a.Y, b.Y) };
 	}
 
 	int Z{};
@@ -757,24 +757,24 @@ enum class VoxelCondition : UINT8 {
 	ReadyCreate,
 };
 
-static Pos gkFront[] = {
-	Pos {+1, +0},
-	Pos {+0, -1},
-	Pos {-1, +0},
-	Pos {+0, +1},
-	Pos {-1, +1},
-	Pos {+1, +1},
-	Pos {+1, -1},
-	Pos {-1, -1},
+static Index gkFront[] = {
+	Index {+1, +0},
+	Index {+0, -1},
+	Index {-1, +0},
+	Index {+0, +1},
+	Index {-1, +1},
+	Index {+1, +1},
+	Index {+1, -1},
+	Index {-1, -1},
 };
 
-static Pos gkFront2[] = {
-Pos {+1, +0, 0},
-Pos {+0, -1, 0},
-Pos {-1, +0, 0},
-Pos {+0, +1, 0},
-Pos {+0, +0, +1},
-Pos {+0, +0, -1},
+static Index gkFront2[] = {
+Index {+1, +0, 0},
+Index {+0, -1, 0},
+Index {-1, +0, 0},
+Index {+0, +1, 0},
+Index {+0, +0, +1},
+Index {+0, +0, -1},
 };
 
 static int gkCost[] = {
@@ -788,7 +788,7 @@ static int gkCost[] = {
 14,
 };
 
-static Pos gkFront3D[] = {
+static Index gkFront3D[] = {
 	// x = -1
 	{ -1, -1, -1 }, { -1, -1,  0 }, { -1, -1,  1 },
 	{ -1,  0, -1 }, { -1,  0,  0 }, { -1,  0,  1 },
@@ -828,9 +828,9 @@ static int gkCost3D[] = {
 
 namespace std {
 	template<>
-	struct hash<Pos>
+	struct hash<Index>
 	{
-		std::size_t operator()(const Pos& pos) const noexcept
+		std::size_t operator()(const Index& pos) const noexcept
 		{
 			std::size_t h1 = std::hash<int>()(pos.Z);
 			std::size_t h2 = std::hash<int>()(pos.X);

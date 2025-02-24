@@ -24,7 +24,7 @@ Grid::Grid(int index, int width, const BoundingBox& bb)
 	mVoxelCols = static_cast<int>(width / mkVoxelWidth);
 }
 
-VoxelState Grid::GetVoxelState(const Pos& index)
+VoxelState Grid::GetVoxelState(const Index& index)
 {
 	auto findIt = mVoxels.find(index);
 	if (findIt == mVoxels.end()) {
@@ -37,7 +37,7 @@ VoxelState Grid::GetVoxelState(const Pos& index)
 	return mVoxels[index].State;
 }
 
-VoxelCondition Grid::GetVoxelCondition(const Pos& index)
+VoxelCondition Grid::GetVoxelCondition(const Index& index)
 {
 	auto findIt = mVoxels.find(index);
 	if (findIt == mVoxels.end()) {
@@ -50,7 +50,7 @@ VoxelCondition Grid::GetVoxelCondition(const Pos& index)
 	return mVoxels[index].Condition;
 }
 
-Voxel Grid::GetVoxel(const Pos& index)
+Voxel Grid::GetVoxel(const Index& index)
 {
 	if (mVoxels.count(index)) {
 		return mVoxels[index];
@@ -60,12 +60,12 @@ Voxel Grid::GetVoxel(const Pos& index)
 	}
 }
 
-PairMapRange Grid::GetCanWalkVoxels(const Pos& index)
+PairMapRange Grid::GetCanWalkVoxels(const Index& index)
 {
 	return mCanWalkVoxels.equal_range(std::make_pair(index.Z, index.X));
 }
 
-int Grid::GetProximityCost(const Pos& index)
+int Grid::GetProximityCost(const Index& index)
 {
 	if (mProximityCosts.count(index)) {
 		return mProximityCosts[index];
@@ -75,7 +75,7 @@ int Grid::GetProximityCost(const Pos& index)
 	}
 }
 
-float Grid::GetEdgeCost(const Pos& index, bool isRowEdge)
+float Grid::GetEdgeCost(const Index& index, bool isRowEdge)
 {
 	if (isRowEdge) {
 		if (mRowEdgeCosts.count(index)) {
@@ -91,7 +91,7 @@ float Grid::GetEdgeCost(const Pos& index, bool isRowEdge)
 	return 0;
 }
 
-void Grid::SetVoxelState(const Pos& index, VoxelState state)
+void Grid::SetVoxelState(const Index& index, VoxelState state)
 {
 	if (mVoxels.count(index)) {
 		if (state == VoxelState::None) {
@@ -117,7 +117,7 @@ void Grid::SetVoxelState(const Pos& index, VoxelState state)
 	}
 }
 
-void Grid::SetVoxelCondition(const Pos& index, VoxelCondition condition)
+void Grid::SetVoxelCondition(const Index& index, VoxelCondition condition)
 {
 	if (mVoxels.count(index)) {
 		mVoxels[index].Condition = condition;
@@ -133,7 +133,7 @@ void Grid::SetVoxelCondition(const Pos& index, VoxelCondition condition)
 	}
 }
 
-void Grid::SetProximityCost(const Pos& index, int cost, bool isReset)
+void Grid::SetProximityCost(const Index& index, int cost, bool isReset)
 {
 	if (isReset) {
 		mProximityCosts.erase(index);
@@ -143,7 +143,7 @@ void Grid::SetProximityCost(const Pos& index, int cost, bool isReset)
 	}
 }
 
-void Grid::RemoveCanWalkVoxel(const Pos& index)
+void Grid::RemoveCanWalkVoxel(const Index& index)
 {
 	auto range = mCanWalkVoxels.equal_range(std::make_pair(index.Z, index.X));
 	for (auto it = range.first; it != range.second;) {
@@ -188,10 +188,10 @@ void Grid::UpdateVoxels(VoxelState voxel, GridObject* object)
 
 	// 오브젝트의 충돌 박스
 	for (const auto& collider : object->GetComponent<ObjectCollider>()->GetColliders()) {
-		std::unordered_set<Pos> boundingVoxels;
+		std::unordered_set<Index> boundingVoxels;
 
-		std::queue<Pos> q;
-		std::unordered_map<Pos, bool> visited(2000);
+		std::queue<Index> q;
+		std::unordered_map<Index, bool> visited(2000);
 
 		if (collider->GetType() != Collider::Type::Box) {
 			continue;
@@ -199,17 +199,17 @@ void Grid::UpdateVoxels(VoxelState voxel, GridObject* object)
 
 		// 오브젝트의 타일 기준 인덱스 계산
 		Vec3 pos = collider->GetCenter();
-		Pos index = Scene::I->GetVoxelIndex(pos);
+		Index index = Scene::I->GetVoxelIndex(pos);
 		Scene::I->SetVoxelState(index, voxel);
 		q.push(index);
 
 		// q가 빌 때까지 BFS를 돌며 현재 타일이 오브젝트와 충돌 했다면 해당 타일을 업데이트
 		while (!q.empty()) {
-			Pos curNode = q.front();
+			Index curNode = q.front();
 			q.pop();
 
 			for (int dir = 0; dir < 6; ++dir) {
-				Pos nextPosT = curNode + gkFront2[dir];
+				Index nextPosT = curNode + gkFront2[dir];
 
 				if (visited[nextPosT]) {
 					continue;
@@ -232,11 +232,11 @@ void Grid::UpdateVoxels(VoxelState voxel, GridObject* object)
 	}
 }
 
-void Grid::UpdateVoxelsEdgeCost(const std::unordered_set<Pos>& boundingVoxels)
+void Grid::UpdateVoxelsEdgeCost(const std::unordered_set<Index>& boundingVoxels)
 {
 	float maxRowValue{};
 	float maxColValue{};
-	for (const Pos& voxel : boundingVoxels) {
+	for (const Index& voxel : boundingVoxels) {
 		bool isOverlapped = false;
 
 		if (mRowEdgeCosts.count(voxel) && mColEdgeCosts.count(voxel)) {
@@ -252,7 +252,7 @@ void Grid::UpdateVoxelsEdgeCost(const std::unordered_set<Pos>& boundingVoxels)
 		}
 	}
 
-	for (const Pos& voxel : boundingVoxels) {
+	for (const Index& voxel : boundingVoxels) {
 		if (maxRowValue != 0) {
 			mRowEdgeCosts[voxel] /= maxRowValue;
 		}
@@ -264,26 +264,26 @@ void Grid::UpdateVoxelsEdgeCost(const std::unordered_set<Pos>& boundingVoxels)
 	}
 }
 
-void Grid::UpdateTopVoxels(const std::unordered_set<Pos>& boundingVoxels)
+void Grid::UpdateTopVoxels(const std::unordered_set<Index>& boundingVoxels)
 {
-	for (const Pos& voxel : boundingVoxels) {
+	for (const Index& voxel : boundingVoxels) {
 		if (Scene::I->GetVoxelState(voxel.Up()) == VoxelState::None) {
 			Scene::I->SetVoxelState(voxel, VoxelState::CanWalk);
 		}
 	}
 }
 
-float Grid::CalcRowEdgeCost(const Pos& voxel, const std::unordered_set<Pos>& boundingVoxels)
+float Grid::CalcRowEdgeCost(const Index& voxel, const std::unordered_set<Index>& boundingVoxels)
 {
 	int leftMoveCnt{};
-	Pos nextLeft = voxel.Left();
+	Index nextLeft = voxel.Left();
 	while (boundingVoxels.count(nextLeft)) {
 		nextLeft = nextLeft.Left();
 		leftMoveCnt++;
 	}
 
 	int rightMoveCnt{};
-	Pos nextRight = voxel.Right();
+	Index nextRight = voxel.Right();
 	while (boundingVoxels.count(nextRight)) {
 		nextRight = nextRight.Right();
 		rightMoveCnt++;
@@ -293,17 +293,17 @@ float Grid::CalcRowEdgeCost(const Pos& voxel, const std::unordered_set<Pos>& bou
 	return mRowEdgeCosts[voxel];
 }
 
-float Grid::CalcColEdgeCost(const Pos& voxel, const std::unordered_set<Pos>& boundingVoxels)
+float Grid::CalcColEdgeCost(const Index& voxel, const std::unordered_set<Index>& boundingVoxels)
 {
 	int forwardMoveCnt{};
-	Pos nextForward = voxel.Forward();
+	Index nextForward = voxel.Forward();
 	while (boundingVoxels.count(nextForward)) {
 		nextForward = nextForward.Forward();
 		forwardMoveCnt++;
 	}
 
 	int backwardMoveCnt{};
-	Pos nextBackward = voxel.Backward();
+	Index nextBackward = voxel.Backward();
 	while (boundingVoxels.count(nextBackward)) {
 		nextBackward = nextBackward.Backward();
 		backwardMoveCnt++;

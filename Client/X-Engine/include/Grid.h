@@ -34,12 +34,12 @@ public:
 
 private:
 	PairMap mCanWalkVoxels{};
-	std::unordered_map<Pos, Voxel> mVoxels{};
+	std::unordered_map<Index, Voxel> mVoxels{};
 
 	// 추후에 UINT8로 변경
-	std::unordered_map<Pos, int> mProximityCosts{};
-	std::unordered_map<Pos, float> mRowEdgeCosts{};
-	std::unordered_map<Pos, float> mColEdgeCosts{};
+	std::unordered_map<Index, int> mProximityCosts{};
+	std::unordered_map<Index, float> mRowEdgeCosts{};
+	std::unordered_map<Index, float> mColEdgeCosts{};
 
 public:
 	Grid(int index, int width, const BoundingBox& bb);
@@ -51,18 +51,18 @@ public:
 	// return all objects
 	const auto& GetObjects() const		{ return mObjects; }
 
-	Voxel GetVoxel(const Pos& index);
-	PairMapRange GetCanWalkVoxels(const Pos& index);
-	int GetProximityCost(const Pos& index);
-	float GetEdgeCost(const Pos& index, bool isRowEdge);
-	VoxelState GetVoxelState(const Pos& tPos);
-	VoxelCondition GetVoxelCondition(const Pos& tPos);
+	Voxel GetVoxel(const Index& index);
+	PairMapRange GetCanWalkVoxels(const Index& index);
+	int GetProximityCost(const Index& index);
+	float GetEdgeCost(const Index& index, bool isRowEdge);
+	VoxelState GetVoxelState(const Index& tPos);
+	VoxelCondition GetVoxelCondition(const Index& tPos);
 
 public:
-	void SetVoxelState(const Pos& index, VoxelState state);
-	void SetVoxelCondition(const Pos& index, VoxelCondition condition);
-	void SetProximityCost(const Pos& index, int cost, bool isReset);
-	void RemoveCanWalkVoxel(const Pos& index);
+	void SetVoxelState(const Index& index, VoxelState state);
+	void SetVoxelCondition(const Index& index, VoxelCondition condition);
+	void SetProximityCost(const Index& index, int cost, bool isReset);
+	void RemoveCanWalkVoxel(const Index& index);
 
 public:
 	bool Empty() const { return mObjects.empty(); }
@@ -77,10 +77,10 @@ public:
 
 	// BFS를 활용하여 타일 업데이트
 	void UpdateVoxels(VoxelState voxel, GridObject* object);
-	void UpdateVoxelsEdgeCost(const std::unordered_set<Pos>& boundingVoxels);
-	void UpdateTopVoxels(const std::unordered_set<Pos>& boundingVoxels);
-	float CalcRowEdgeCost(const Pos& voxel, const std::unordered_set<Pos>& boundingVoxels);
-	float CalcColEdgeCost(const Pos& voxel, const std::unordered_set<Pos>& boundingVoxels);
+	void UpdateVoxelsEdgeCost(const std::unordered_set<Index>& boundingVoxels);
+	void UpdateTopVoxels(const std::unordered_set<Index>& boundingVoxels);
+	float CalcRowEdgeCost(const Index& voxel, const std::unordered_set<Index>& boundingVoxels);
+	float CalcColEdgeCost(const Index& voxel, const std::unordered_set<Index>& boundingVoxels);
 
 	// collision check for objects contained in grid
 	void CheckCollisions();

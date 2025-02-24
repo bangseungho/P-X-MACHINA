@@ -310,9 +310,9 @@ void Scene::UpdateVoxelsOnTerrain()
 	//	for (int j = 0; j < static_cast<int>(kBorderExtents.x / Grid::mkVoxelWidth); ++j) {
 	for (int i = 1300; i < 1600; ++i) {
 		for (int j = 1000; j < 1500; ++j) {
-			Vec3 pos = GetVoxelPos(Pos{i, j, 0});
-			Pos index = Pos{ i, j, static_cast<int>(std::round(GetTerrainHeight(pos.x, pos.z))) };
-			Pos upIndex = index.Up();
+			Vec3 pos = GetVoxelPos(Index{i, j, 0});
+			Index index = Index{ i, j, static_cast<int>(std::round(GetTerrainHeight(pos.x, pos.z))) };
+			Index upIndex = index.Up();
 
 			// 위 복셀이 스태틱이면 해당 아래 복셀도 스태틱으로 설정
 			VoxelState upState = GetVoxelState(upIndex);
@@ -326,7 +326,7 @@ void Scene::UpdateVoxelsOnTerrain()
 	}
 }
 
-void Scene::UpdateVoxelsProximityCost(const Pos& index, bool isReset)
+void Scene::UpdateVoxelsProximityCost(const Index& index, bool isReset)
 {
 	constexpr int radius = 5;
 	int maxCost = static_cast<int>(std::sqrt(radius * radius));
@@ -337,9 +337,9 @@ void Scene::UpdateVoxelsProximityCost(const Pos& index, bool isReset)
 			int nz = index.Z + dz;
 			double distance = std::sqrt((nx - index.X) * (nx - index.X) + (nz - index.Z) * (nz - index.Z));
 			int cost = isReset ? 0 : static_cast<int>(maxCost - distance);
-			Vec3 pos = GetVoxelPos(Pos{ nz, nx, 0 });
+			Vec3 pos = GetVoxelPos(Index{ nz, nx, 0 });
 			int yIndex = static_cast<int>(std::round(GetTerrainHeight(pos.x, pos.z)));
-			SetProximityCost(Pos{ nz, nx, yIndex }, cost, isReset);
+			SetProximityCost(Index{ nz, nx, yIndex }, cost, isReset);
 		}
 	}
 }
@@ -861,7 +861,7 @@ void Scene::PopObjectBuffer()
 	}
 }
 
-bool Scene::CanGoNextVoxel(const Pos& pos) const
+bool Scene::CanGoNextVoxel(const Index& pos) const
 {
 	VoxelState state = GetVoxelState(pos);
 
@@ -872,8 +872,13 @@ bool Scene::CanGoNextVoxel(const Pos& pos) const
 	return true;
 }
 
+bool Scene::CanGoNextVoxel(const Vec3& pos) const
+{
+	return CanGoNextVoxel(Scene::I->GetVoxelIndex(pos).Up());
+}
+
 //////////////////* Others *//////////////////
-int Scene::GetGridIndex(const Pos& index) const {
+int Scene::GetGridIndex(const Index& index) const {
 	const int gridX = static_cast<int>(index.X * Grid::mkVoxelWidth / kGridWidth);
 	const int gridZ = static_cast<int>(index.Z * Grid::mkVoxelHeight / kGridWidth);
 	return gridZ * kGridCols + gridX;
@@ -890,17 +895,17 @@ int Scene::GetGridIndex(Vec3 pos) const
 	return gridZ * kGridCols + gridX;
 }
 
-Pos Scene::GetVoxelIndex(const Vec3& pos) const
+Index Scene::GetVoxelIndex(const Vec3& pos) const
 {
 	// 월드 포지션으로부터 타일의 고유 인덱스를 계산
 	const int voxelInGridIndexX = static_cast<int>((pos.x - mGridStartPoint + 0.25f) / Grid::mkVoxelWidth);
-	const int voxelInGridIndexZ = (pos.z - mGridStartPoint + 0.25f) / Grid::mkVoxelWidth;
+	const int voxelInGridIndexZ = static_cast<int>((pos.z - mGridStartPoint + 0.25f) / Grid::mkVoxelWidth);
 	const int voxelInGridIndexY = static_cast<int>(std::round(pos.y / Grid::mkVoxelHeight));
 
-	return Pos{ voxelInGridIndexZ, voxelInGridIndexX, voxelInGridIndexY };
+	return Index{ voxelInGridIndexZ, voxelInGridIndexX, voxelInGridIndexY };
 }
 
-Vec3 Scene::GetVoxelPos(const Pos& index) const
+Vec3 Scene::GetVoxelPos(const Index& index) const
 {
 	// 타일의 고유 인덱스로부터 월드 포지션을 계산
 	const float posX = index.X * Grid::mkVoxelWidth + mGridStartPoint;
@@ -910,52 +915,52 @@ Vec3 Scene::GetVoxelPos(const Pos& index) const
 	return Vec3{ posX, posY, posZ };
 }
 
-VoxelState Scene::GetVoxelState(const Pos& index) const
+VoxelState Scene::GetVoxelState(const Index& index) const
 {
 	return mGrids[GetGridIndex(index)]->GetVoxelState(index);
 }
 
-VoxelCondition Scene::GetVoxelCondition(const Pos& index) const
+VoxelCondition Scene::GetVoxelCondition(const Index& index) const
 {
 	return mGrids[GetGridIndex(index)]->GetVoxelCondition(index);
 }
 
-int Scene::GetProximityCost(const Pos& index) const
+int Scene::GetProximityCost(const Index& index) const
 {
 	return mGrids[GetGridIndex(index)]->GetProximityCost(index);
 }
 
-float Scene::GetEdgeCost(const Pos& index, bool isRowEdge) const
+float Scene::GetEdgeCost(const Index& index, bool isRowEdge) const
 {
 	return mGrids[GetGridIndex(index)]->GetEdgeCost(index, isRowEdge);
 }
 
-Voxel Scene::GetVoxel(const Pos& index) const
+Voxel Scene::GetVoxel(const Index& index) const
 {
 	return mGrids[GetGridIndex(index)]->GetVoxel(index);
 }
 
-PairMapRange Scene::GetCanWalkVoxels(const Pos& index) const
+PairMapRange Scene::GetCanWalkVoxels(const Index& index) const
 {
 	return mGrids[GetGridIndex(index)]->GetCanWalkVoxels(index);
 }
 
-void Scene::RemoveCanWalkVoxel(const Pos& index) const
+void Scene::RemoveCanWalkVoxel(const Index& index) const
 {
 	return mGrids[GetGridIndex(index)]->RemoveCanWalkVoxel(index);
 }
 
-void Scene::SetVoxelState(const Pos& index, VoxelState state) const
+void Scene::SetVoxelState(const Index& index, VoxelState state) const
 {
 	mGrids[GetGridIndex(index)]->SetVoxelState(index, state);
 }
 
-void Scene::SetVoxelCondition(const Pos& index, VoxelCondition condition) const
+void Scene::SetVoxelCondition(const Index& index, VoxelCondition condition) const
 {
 	mGrids[GetGridIndex(index)]->SetVoxelCondition(index, condition);
 }
 
-void Scene::SetProximityCost(const Pos& index, int cost, bool isReset) const
+void Scene::SetProximityCost(const Index& index, int cost, bool isReset) const
 {
 	mGrids[GetGridIndex(index)]->SetProximityCost(index, cost, isReset);
 }

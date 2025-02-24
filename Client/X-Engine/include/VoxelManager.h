@@ -45,7 +45,7 @@ class VoxelManager : public Singleton<VoxelManager> {
 
 private:
 	struct VoxelSort {
-		bool operator()(const Pos& lhs, const Pos& rhs)const {
+		bool operator()(const Index& lhs, const Index& rhs)const {
 			if (lhs.Y != rhs.Y) return lhs.Y > rhs.Y;
 			else if (lhs.Z != rhs.Z) return lhs.Z < rhs.Z;
 			return lhs.X < rhs.X;
@@ -53,32 +53,32 @@ private:
 	};
 
 private:
-	std::set<Pos, VoxelSort> mRenderVoxels{};
+	std::set<Index, VoxelSort> mRenderVoxels{};
 	Agent*					mPickedAgent{};
 	bool					mReadyMakePath{ true };
 	bool					mHoldingClick{};
 
 private:
-	Pos						mSelectedVoxel{};
-	Pos						mCenterPos{};
+	Index						mSelectedVoxel{};
+	Index						mCenterPos{};
 	int						mSelectedVoxelProximityCost{};
 	std::pair<float, float>	mSelectedVoxelEdgeCost{};
 
 private:
-	Pos						mAboveVoxel{};
+	Index						mAboveVoxel{};
 
 private:
 	VoxelOption				mOption{};
 
 private:
 	std::vector<uptr<UploadBuffer<InstanceData>>> mInstanceBuffers{};
-	std::unordered_set<Pos> mUsedCreateModeVoxels{};
+	std::unordered_set<Index> mUsedCreateModeVoxels{};
 
 public:
 	static constexpr UINT mkMaxRenderVoxelCount = 60000;
 
 public:
-	const Pos& GetSelectedVoxelPos() const { return mSelectedVoxel; }
+	const Index& GetSelectedVoxelPos() const { return mSelectedVoxel; }
 	Agent* GetPickedAgent() { return mPickedAgent; }
 
 public:
@@ -97,7 +97,7 @@ public:
 	void SetAgent(Agent* agent);
 
 public:
-	void UpdateRenderVoxels(const Pos& pos, bool checkCenterPos = true);
+	void UpdateRenderVoxels(const Index& pos, bool checkCenterPos = true);
 
 public:
 	void ProcessMouseMsg(UINT messageID, WPARAM wParam, LPARAM lParam);

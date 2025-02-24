@@ -84,7 +84,7 @@ void VoxelManager::Init()
 
 }
 
-void VoxelManager::UpdateRenderVoxels(const Pos& pos, bool checkCenterPos)
+void VoxelManager::UpdateRenderVoxels(const Index& pos, bool checkCenterPos)
 {
 	if (pos == mCenterPos && checkCenterPos) {
 		return;
@@ -99,7 +99,7 @@ void VoxelManager::UpdateRenderVoxels(const Pos& pos, bool checkCenterPos)
 	for (int i = x - halfSizeX; i < x + halfSizeX; ++i) {
 		for (int j = y - halfSizeZ; j < y + halfSizeZ; ++j) {
 			for (int k = 0; k < VoxelManager::mOption.RenderVoxelHeight; ++k) {
-				const Pos& voxel = Pos{ j, i, k };
+				const Index& voxel = Index{ j, i, k };
 				if (Scene::I->GetVoxelState(voxel) != VoxelState::None || Scene::I->GetVoxelCondition(voxel) == VoxelCondition::ReadyCreate) {
 					mRenderVoxels.insert(voxel);
 				}
@@ -144,10 +144,10 @@ void VoxelManager::Render()
 			instData.Color = Vec4{ 1.f, 0.f, 1.f, 1.f };
 			break;
 		case VoxelCondition::Closed:
-			instData.Color = Vec4{ 0.f, 0.f, 1.f, 1.f };
+			instData.Color = Vec4{ 0.f, 0.0f, 1.f, 1.f };
 			break;
 		case VoxelCondition::Opened:
-			instData.Color = Vec4{ 0.f, 1.f, 1.f, 1.f };
+			instData.Color = Vec4{ 1.f, 0.5f, 1.f, 1.f };
 			break;
 		case VoxelCondition::ReadyCreate:
 			instData.Color = Vec4{ 1.f, 0.f, 0.f, 1.f };
@@ -167,7 +167,7 @@ void VoxelManager::PickTopVoxel(bool makePath)
 	const Vec2& aimPos = InputMgr::I->GetMousePos();
 	const Ray& ray = MAIN_CAMERA->ScreenToWorldRay(aimPos);
 
-	mSelectedVoxel = Pos{};
+	mSelectedVoxel = Index{};
 	// 추후 분할정복으로 변경 예정
 	float minValue{ FLT_MAX };
 	for (const auto& voxel : mRenderVoxels) {
@@ -262,7 +262,7 @@ void VoxelManager::UpdatePlanningPathMode(bool makePath, VoxelState selectedVoxe
 
 	AgentManager::I->ClearFlowField();
 	AgentManager::I->PathPlanningToAStarOnlyReader(mSelectedVoxel);
-	//AgentManager::I->PathPlanningToFlowField(mSelectedVoxel);
+	AgentManager::I->PathPlanningToFlowField(mSelectedVoxel);
 
 	//if (!mPickedAgent) {
 	//	return;

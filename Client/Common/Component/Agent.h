@@ -20,7 +20,7 @@ struct PQNode {
 	bool operator>(const PQNode& rhs) const { return F > rhs.F; }
 	float F{};
 	float G{};
-	Pos	Pos{};
+	Index	Pos{};
 };
 #pragma endregion
 
@@ -104,18 +104,19 @@ public:
 private:
 	std::vector<Vec3>	mGlobalPath{};
 	std::vector<Vec3>	mLocalPath{};
-	std::unordered_map<Pos, int> mGlobalPathCache{};
-	std::unordered_map<Pos, int> mOpenListMinusCost{};
-	std::unordered_map<Pos, int> mPrevPathMinusCost{};
+	std::unordered_map<Index, int> mGlobalPathCache{};
+	std::unordered_map<Index, int> mOpenListMinusCost{};
+	std::unordered_map<Index, int> mPrevPathMinusCost{};
 
-	Pos					mVoxelIndex{};
-	Pos					mStart{};
-	Pos					mDest{};
+	Index				mVoxelIndex{};
+	Index				mStart{};
+	Index				mDestIndex{};
+	Vec3				mDestPos{};
 	Vec3				mPathDir{};
 	Vec3				mTarget{};
 
-	std::vector<Pos>	mCloseList{};
-	std::vector<Pos>	mOpenList{};
+	std::vector<Index>	mCloseList{};
+	std::vector<Index>	mOpenList{};
 	
 	bool				mIsStart{};
 	int					mSlowSpeedCount{};
@@ -132,13 +133,14 @@ public:
 	void UpdatePosition();
 	
 public:
-	const Pos		GetPathIndex(int index) const;
-	const Pos		GetPathDest() const { return mDest; }
+	const Index		GetPathIndex(int index) const;
+	const Index		GetDestIndex() const { return mDestIndex; }
+	const Vec3		GetDestPos() const { return mDestPos; }
 	const Matrix	GetWorldMatrix() const { return mObject->GetWorldTransform(); }
 	const Vec3		GetWorldPosition() const { return mObject->GetPosition(); }
 	Vec3			GetWorldPosition()  { return mObject->GetPosition(); }
 	const Vec3		GetPathDirection() const { return mPathDir; }
-	const Pos		GetVoxelIndex() const { return mVoxelIndex; }
+	const Index		GetVoxelIndex() const { return mVoxelIndex; }
 	const bool		IsStart() const { return mIsStart; }
 
 public:
@@ -146,12 +148,12 @@ public:
 	void SetStartMoveToPath(bool isStart) { mIsStart = isStart; }
 	void SetAngleSpeedRatio(float ratio) { mAngleSpeedRatio = ratio; }
 	void SetAgentID(int id) { mAgentID = id; }
-	void SetPathDest(const Pos& dest) { mDest = dest; }
-	void SetTarget(const Vec3& target);
+	void SetDestIndex(const Index& destIndex);
+	void SetDestPos(const Vec3& destPos);
 
 public:
-	std::vector<Vec3>	PathPlanningToAstar(const Pos& dest, const std::unordered_map<Pos, int>& avoidCostMap, bool clearPathList = true, bool inputDest = true, int maxOpenNodeCount = 50000);
-	void				ReadyPlanningToPath(const Pos& start);
+	std::vector<Vec3>	PathPlanningToAstar(const Index& dest, const std::unordered_map<Index, int>& avoidCostMap, bool clearPathList = true, bool inputDest = true, int maxOpenNodeCount = 50000);
+	void				ReadyPlanningToPath(const Index& start);
 	void				SetPath(std::vector<Vec3>& path) { mGlobalPath = path; }
 	bool				PickAgent();
 	void				RenderOpenList();
@@ -161,14 +163,13 @@ public:
 	void				SetRimFactor(float factor) { mObject->mObjectCB.RimFactor = factor; }
 
 private:
-	bool	CheckCurNodeContainPathCache(const Pos& curNode);
-	void	RayPathOptimize(std::stack<Pos>& path, const Pos& dest);
+	bool	CheckCurNodeContainPathCache(const Index& curNode);
+	void	RayPathOptimize(std::stack<Index>& path, const Index& dest);
 	void	MakeSplinePath(std::vector<Vec3>& path);
 
 private:
-	void	RePlanningToPathAvoidStatic(const Pos& crntPathIndex);
-	void	RePlanningToPathAvoidDynamic();
-	float	GetEdgeCost(const Pos& nextPos, const Pos& dir);
+	void	RePlanningToPathAvoidStatic(const Index& crntPathIndex);
+	float	GetEdgeCost(const Index& nextPos, const Index& dir);
 
 private:
 	std::vector<std::pair<float, const Agent*>> mAgentNeighbors{};
@@ -209,7 +210,7 @@ public:
 
 private:
 	sptr<class KdTree> mKdTree{};
-	std::unordered_map<Pos, Vec3> mFlowFieldMap{};
+	std::unordered_map<Index, Vec3> mFlowFieldMap{};
 
 	int mAgentIDs{};
 	Agent* mReader{};
@@ -223,8 +224,8 @@ public:
 	void AddAgent(Agent* agent);
 	//void RemoveAgent(Agent* agent) { mAgents.erase(agent); }
 	void SetAgentPrefVelocity(int agentNo, const Vec3& prefVelocity) { mAgents[agentNo]->mPrefVelocity = prefVelocity; }
-	Vec3 GetFlowFieldDirection(const Pos& pos);
-	Vec3 GetFlowFieldPos(const Pos& pos);
+	Vec3 GetFlowFieldDirection(const Index& pos);
+	Vec3 GetFlowFieldPos(const Index& pos);
 
 public:
 	void SetClimbHeightAllAgent(int height);
@@ -237,19 +238,19 @@ public:
 public:
 	void ClearFlowField() { mFlowFieldMap.clear(); }
 	void CopyFlowField();
-	void PushFlowField(const Pos& index, const Vec3& pos);
-	void PathPlanningToAStarOnlyReader(const Pos& dest);
-	void PathPlanningToFlowField(const Pos& dest);
-	void AllAgentPathPlanning(const Pos& dest);
+	void PushFlowField(const Index& index, const Vec3& pos);
+	void PathPlanningToAStarOnlyReader(const Index& dest);
+	void PathPlanningToFlowField(const Index& dest);
+	void AllAgentPathPlanning(const Index& dest);
 	void StartMoveToPath();
 	void RenderPathList();
 	void ClearPathList();
-	std::unordered_map<Pos, int> CheckAgentIndex(const Pos& index, Agent* invoker);
+	std::unordered_map<Index, int> CheckAgentIndex(const Index& index, Agent* invoker);
 	void PickAgent(Agent** agent);
-	Pos FindEmptyDestVoxel(Agent* agent);
+	Index FindEmptyDestVoxel(Agent* agent);
 
 public:
-	Pos RandomDest(int x, int z);
+	Index RandomDest(int x, int z);
 	void ShuffleMoveToPath();
 };
 

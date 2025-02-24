@@ -170,7 +170,7 @@ void ImGuiFunc::SetAgent(Agent* pickedAgent)
 void ImGuiVoxelFunc::Execute(GameObject* selectedObject)
 {
     // index
-    const Pos& selectedVoxelIndex = VoxelManager::I->GetSelectedVoxelPos();
+    const Index& selectedVoxelIndex = VoxelManager::I->GetSelectedVoxelPos();
     ImGui::Text("Idx : x = %d, y = %d, z = %d", selectedVoxelIndex.X, selectedVoxelIndex.Y, selectedVoxelIndex.Z);
 
     // position
@@ -319,7 +319,7 @@ void ImGuiAgentFunc::Execute(GameObject* selectedObject)
 	}
 
 	const Vec3& crntAgentPos = mCrntAgent->GetWorldPosition();
-	const Pos& crntAgentIndex = Scene::I->GetVoxelIndex(crntAgentPos);
+	const Index& crntAgentIndex = Scene::I->GetVoxelIndex(crntAgentPos);
 
 	// index
 	ImGui::Text("Index : x = %d, y = %d, z = %d", crntAgentIndex.X, crntAgentIndex.Y, crntAgentIndex.Z);

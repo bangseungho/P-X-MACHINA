@@ -13,7 +13,7 @@ void KdTree::BuildAgentTree()
 
 	if (!mAgents.empty()) {
 		mAgentTree.resize(2 * mAgents.size() - 1);
-		BuildAgentTreeRecursive(0, mAgents.size(), 0);
+		BuildAgentTreeRecursive(0, static_cast<int>(mAgents.size()), 0);
 	}
 }
 

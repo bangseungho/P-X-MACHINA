@@ -103,21 +103,22 @@ public:
 	std::vector<sptr<GameObject>> GetAllObjects() const;
 	rsptr<Object>GetGameManager() const { return mGameManager; }
 
-	bool			CanGoNextVoxel(const Pos& pos) const;
-	int				GetGridIndex(const Pos& index) const;
+	bool			CanGoNextVoxel(const Index& pos) const;
+	bool			CanGoNextVoxel(const Vec3& pos) const;
+	int				GetGridIndex(const Index& index) const;
 	int				GetGridIndex(Vec3 pos) const;
-	Pos				GetVoxelIndex(const Vec3& pos) const;
-	Vec3			GetVoxelPos(const Pos& index) const;
-	Voxel			GetVoxel(const Pos& index) const;
-	PairMapRange	GetCanWalkVoxels(const Pos& index) const;
-	void			RemoveCanWalkVoxel(const Pos& index) const;
-	VoxelState		GetVoxelState(const Pos& index) const;
-	VoxelCondition	GetVoxelCondition(const Pos& index) const;
-	int				GetProximityCost(const Pos& index) const;
-	float			GetEdgeCost(const Pos& index, bool isRowEdge) const;
-	void			SetVoxelState(const Pos& index, VoxelState state) const;
-	void			SetVoxelCondition(const Pos& index, VoxelCondition condition) const;
-	void			SetProximityCost(const Pos& index, int cost, bool isReset) const;
+	Index			GetVoxelIndex(const Vec3& pos) const;
+	Vec3			GetVoxelPos(const Index& index) const;
+	Voxel			GetVoxel(const Index& index) const;
+	PairMapRange	GetCanWalkVoxels(const Index& index) const;
+	void			RemoveCanWalkVoxel(const Index& index) const;
+	VoxelState		GetVoxelState(const Index& index) const;
+	VoxelCondition	GetVoxelCondition(const Index& index) const;
+	int				GetProximityCost(const Index& index) const;
+	float			GetEdgeCost(const Index& index, bool isRowEdge) const;
+	void			SetVoxelState(const Index& index, VoxelState state) const;
+	void			SetVoxelCondition(const Index& index, VoxelCondition condition) const;
+	void			SetProximityCost(const Index& index, int cost, bool isReset) const;
 #pragma endregion
 
 #pragma region DirectX
@@ -140,7 +141,7 @@ public:
 	void BuildObjects();
 	void ReleaseObjects();
 	void UpdateVoxelsOnTerrain();
-	void UpdateVoxelsProximityCost(const Pos& index, bool isReset = false);
+	void UpdateVoxelsProximityCost(const Index& index, bool isReset = false);
 
 private:
 	/* Object */
