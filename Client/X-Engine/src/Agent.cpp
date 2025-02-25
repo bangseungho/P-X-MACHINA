@@ -890,8 +890,6 @@ void Agent::SetPreferredVelocity()
 		mUseRVO = false;
 	}
 	else {
-		toDest = mDestPos - mObject->GetPosition();
-		Vec3 toNext = nextPos - mObject->GetPosition();
 		toDest = nextPos * mOption.AgentSpeed;
 		mPrefVelocity = toDest;
 		mPrevNextPos = nextPos;
@@ -1018,16 +1016,14 @@ void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap
 		std::vector<std::pair<Index, Vec3>> temp{};
 		for (int i = 0; i < static_cast<int>(frontPos.size()); ++i) {
 			for (const auto& [index, pos] : copyMap) {
-				const Vec3 nextPos = pos + frontPos[i];
-				const Vec3 toDest = nextPos - mReader->GetDestPos();
 				const Index nextIndex = index + frontIndex[i];
+				const Vec3 nextPos = Scene::I->GetVoxelPos(nextIndex);
+				const Vec3 toDest = nextPos - mReader->GetDestPos();
 				
 				if (mFieldTypeMap[nextIndex] == FieldType::Reader) continue;
 				if (toDest.Length() < kDestLength) { mFieldTypeMap[index] = FieldType::Reader; continue; }
 				if (!Scene::I->CanGoNextVoxel(nextPos)) continue;
 				if (!Scene::I->CanGoNextVoxel(nextIndex.Up())) continue;
-
-				//temp.push_back({ index + frontIndex[i], nextPos });
 				temp.push_back({ index + frontIndex[i], pos });
 			}
 		}
