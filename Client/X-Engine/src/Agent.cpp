@@ -298,7 +298,7 @@ std::vector<Vec3> Agent::PathPlanningToAstar(const Index& dest, const std::unord
 			path.push(pos);
 		}
 
-		mFieldMap.insert({ parent[pos], Scene::I->GetVoxelPos(pos) });
+		mFieldMap.insert({ parent[pos], Vector3::Normalized(Scene::I->GetVoxelPos(pos) - Scene::I->GetVoxelPos(parent[pos])) });
 		pos = parent[pos];
 		prevDir = dir;
 	}
@@ -892,7 +892,7 @@ void Agent::SetPreferredVelocity()
 	else {
 		toDest = mDestPos - mObject->GetPosition();
 		Vec3 toNext = nextPos - mObject->GetPosition();
-		toDest = Vector3::Normalized(toNext) * mOption.AgentSpeed;
+		toDest = nextPos * mOption.AgentSpeed;
 		mPrefVelocity = toDest;
 		mPrevNextPos = nextPos;
 		mUseRVO = true;
@@ -1027,7 +1027,8 @@ void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap
 				if (!Scene::I->CanGoNextVoxel(nextPos)) continue;
 				if (!Scene::I->CanGoNextVoxel(nextIndex.Up())) continue;
 
-				temp.push_back({ index + frontIndex[i], nextPos });
+				//temp.push_back({ index + frontIndex[i], nextPos });
+				temp.push_back({ index + frontIndex[i], pos });
 			}
 		}
 
@@ -1107,7 +1108,8 @@ void AgentManager::PathPlanningToFlowField(const Index& dest)
 
 				pq.push({ nextCost, nextPos });
 				distance[nextPos] = nextCost;
-				mFlowFieldMap.insert({ nextPos, Scene::I->GetVoxelPos(curNode.second) });
+
+				mFlowFieldMap.insert({ nextPos, Vector3::Normalized(Scene::I->GetVoxelPos(curNode.second) - Scene::I->GetVoxelPos(nextPos)) });
 				mFieldTypeMap.insert({ nextPos, FieldType::Flower });
 			}
 		}
