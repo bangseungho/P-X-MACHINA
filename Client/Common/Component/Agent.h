@@ -112,6 +112,7 @@ private:
 	std::unordered_map<Index, int> mOpenListMinusCost{};
 	std::unordered_map<Index, int> mPrevPathMinusCost{};
 
+	Vec3				mObjectPos{};
 	Index				mVoxelIndex{};
 
 	Index				mStartIndex{};
@@ -244,7 +245,7 @@ public:
 
 public:
 	template<typename T>
-	const T& GetValueToIndex(const std::unordered_map<Index, T>& map, const Index& index) const;
+	const T GetValueToIndex(const std::unordered_map<Index, T>& map, const Index& index) const;
 	const Vec3& GetFlowFieldPos(const Index& index) const { return GetValueToIndex(mFlowFieldMap, index); };
 	FieldType GetFieldType(const Index& index) const { return GetValueToIndex(mFieldTypeMap, index); };
 	//int GetOpenListMinusCost(const Index& index) const { return GetValueToIndex(mOpenListMinusCost, index); };
@@ -282,7 +283,7 @@ public:
 #pragma endregion
 
 template<typename T>
-inline const T& AgentManager::GetValueToIndex(const std::unordered_map<Index, T>& map, const Index& index) const
+inline const T AgentManager::GetValueToIndex(const std::unordered_map<Index, T>& map, const Index& index) const
 {
 	if (map.count(index)) {
 		return map.at(index);

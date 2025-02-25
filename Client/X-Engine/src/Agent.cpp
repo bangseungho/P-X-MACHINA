@@ -61,6 +61,8 @@ void Agent::Start()
 
 void Agent::Update()
 {
+	mObjectPos = mObject->GetPosition();
+
 	if (!Vector3::IsZero(mStartPos)) {
 		const Vec3 toDest = mDestPos - GetWorldPosition();
 		const Vec3 startToDest = mDestPos - mStartPos;
@@ -83,7 +85,7 @@ bool Compare(float a, float b, int flag)
 
 void Agent::UpdatePosition()
 {
-	const Vec3& objectPos = mObject->GetPosition();
+	const Vec3& objectPos = mObjectPos;
 	mVoxelIndex = Scene::I->GetVoxelIndex(objectPos);
 
 	if (!PathOption::I->GetStartFlag()) {
@@ -329,7 +331,7 @@ std::vector<Vec3> Agent::PathPlanningToAstar(const Index& dest, const std::unord
 	}
 
 	if (!finalPath.empty()) {
-		mPathDir = Vector3::Normalized(finalPath.back() - mObject->GetPosition());
+		mPathDir = Vector3::Normalized(finalPath.back() - mObjectPos);
 	}
 
 	std::reverse(finalPath.begin(), finalPath.end());
@@ -523,7 +525,7 @@ float Agent::GetEdgeCost(const Index& nextPos, const Index& dir)
 void Agent::InsertAgentNeightbor(const Agent* agent, float& rangeSq)
 {
 	if (this != agent) {
-		const float distSq = Vec3::AbsSq(mObject->GetPosition() - agent->GetWorldPosition());
+		const float distSq = Vec3::AbsSq(mObjectPos - agent->GetWorldPosition());
 
 		if (distSq < rangeSq) {
 			if (mAgentNeighbors.size() < mMaxNeighbors) {
@@ -798,7 +800,7 @@ void Agent::ComputeNewVelocity()
 
 	for (int i = 0; i < mAgentNeighbors.size(); ++i) {
 		const Agent* const other = mAgentNeighbors[i].second;
-		const Vec3 relativePosition = other->GetWorldPosition().xz() - mObject->GetPosition().xz();
+		const Vec3 relativePosition = other->GetWorldPosition().xz() - mObjectPos.xz();
 		const Vec3 relativeVelocity = mVelocity.xz() - other->GetVelocity().xz();
 		const float distSq = Vec3::AbsSq(relativePosition);
 		const float combinedRadius = mRadius + other->GetRadius();
@@ -862,12 +864,12 @@ void Agent::UpdateFollowField()
 	}
 
 	constexpr static float kMaxDistToDest = 10.f;
-	if ((mDestPos - mObject->GetPosition()).Length() < kMaxDistToDest) {
+	if ((mDestPos - mObjectPos).Length() < kMaxDistToDest) {
 		return;
 	}
 
 	const FieldType nextFieldType = AgentManager::I->GetFieldType(mVoxelIndex);
-	const Vec3 toReader = mReader->GetWorldPosition() - mObject->GetPosition();
+	const Vec3 toReader = mReader->GetWorldPosition() - mObjectPos;
 
 	constexpr static float kMaxDistToReader = 10.f;
 	if (nextFieldType == FieldType::Flower && toReader.Length() > kMaxDistToReader) {
@@ -885,14 +887,14 @@ void Agent::SetPreferredVelocity()
 
 	Vec3 toDest{};
 	if (Vector3::IsZero(nextPos) && AgentManager::I->mIsInit) {
-		toDest = (mPrevNextPos - mObject->GetPosition()) * mOption.AgentSpeed;
+		toDest = (mPrevNextPos - mObjectPos) * mOption.AgentSpeed;
 		mNewVelocity = toDest;
 		mUseRVO = false;
 	}
 	else {
 		toDest = nextPos * mOption.AgentSpeed;
 		mPrefVelocity = toDest;
-		mPrevNextPos = nextPos;
+		mPrevNextPos = mObjectPos;
 		mUseRVO = true;
 	}
 
@@ -977,7 +979,7 @@ void AgentManager::Start()
 void AgentManager::Update()
 {
 	for (int i = 0; i < static_cast<int>(mAgents.size()); ++i) {
-		mAgents[i]->UpdateFollowField();
+		//mAgents[i]->UpdateFollowField();
 		mAgents[i]->SetPreferredVelocity();
 	}
 
@@ -993,38 +995,55 @@ void AgentManager::Update()
 	}
 }
 
+int GetSide2D(const Vec3& A, const Vec3& B, const Vec3& P) {
+	Vec3 D = { B.x - A.x, B.y - A.y, B.z - A.z };
+	Vec3 W = { P.x - A.x, P.y - A.y, P.z - A.z };
+	float cross = D.x * W.z - D.z * W.x;
+
+	if (cross > 0) return 1;   // 왼쪽
+	if (cross < 0) return -1;  // 오른쪽
+	return 0;  // 직선 위
+}
+
 void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap)
 {
 	constexpr static std::array<const Vec3, 4> frontPos{
 		Vec3{0.f, 0.f, +Grid::mkVoxelWidth},
+		Vec3{+Grid::mkVoxelWidth, 0.f, 0.f},
 		Vec3{0.f, 0.f, -Grid::mkVoxelWidth},
 		Vec3{-Grid::mkVoxelWidth, 0.f, 0.f},
-		Vec3{+Grid::mkVoxelWidth, 0.f, 0.f},
 	};
 
 	constexpr static std::array<const Index, 4> frontIndex{
 		Index{+1, 0, 0},
+		Index{0, +1, 0},
 		Index{-1, 0, 0},
 		Index{0, -1, 0},
-		Index{0, +1, 0},
 	};
 
 	std::unordered_map<Index, Vec3> copyMap = fieldMap;
-
+	
 	const float kDestLength = 2.f;
 	for (int k = 0; k < mOption.FieldLineCount; ++k) {
 		std::vector<std::pair<Index, Vec3>> temp{};
 		for (int i = 0; i < static_cast<int>(frontPos.size()); ++i) {
-			for (const auto& [index, pos] : copyMap) {
+			for (const auto& [index, dir] : copyMap) {
 				const Index nextIndex = index + frontIndex[i];
 				const Vec3 nextPos = Scene::I->GetVoxelPos(nextIndex);
-				const Vec3 toDest = nextPos - mReader->GetDestPos();
-				
-				if (mFieldTypeMap[nextIndex] == FieldType::Reader) continue;
-				if (toDest.Length() < kDestLength) { mFieldTypeMap[index] = FieldType::Reader; continue; }
-				if (!Scene::I->CanGoNextVoxel(nextPos)) continue;
+				//const Vec3 nnextPos = nextPos + dir * Grid::mkVoxelWidth;
+				//const Vec3 toDest = nextPos - mReader->GetDestPos();
+				//if (mFieldTypeMap[nextIndex] == FieldType::Reader) continue;
+				//if (toDest.Length() < kDestLength) { mFieldTypeMap[index] = FieldType::Reader; continue; }
+				//if (!Scene::I->CanGoNextVoxel(nnextPos)) continue;
+				if (Scene::I->GetProximityCost(nextIndex) >= 3) continue;
 				if (!Scene::I->CanGoNextVoxel(nextIndex.Up())) continue;
-				temp.push_back({ index + frontIndex[i], pos });
+
+				const Vec3 pos = Scene::I->GetVoxelPos(index);
+				const Vec3 posDir = pos + dir;
+				const int side2D = GetSide2D(pos, posDir, nextPos);
+				if (side2D == 0) continue;
+
+				temp.push_back({ index + frontIndex[i], dir });
 			}
 		}
 
@@ -1059,7 +1078,7 @@ void AgentManager::PathPlanningToAStarOnlyReader(const Index& dest)
 	for (const auto agent : mAgents) {
 		totalPos += agent->GetWorldPosition();
 	}
-	totalPos /= mAgents.size();
+	totalPos /= static_cast<float>(mAgents.size());
 
 	mReader->ReadyPlanningToPath(Scene::I->GetVoxelIndex(totalPos));
 	mReader->PathPlanningToAstar(dest);
