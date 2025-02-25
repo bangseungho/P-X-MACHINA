@@ -114,7 +114,7 @@ void Agent::UpdatePosition()
 			const Vec3& vertexPos = nextPos + Vec3{ mdx[i], 0.f, mdz[i] };
 			const Index& vertexIndex = Scene::I->GetVoxelIndex(vertexPos);
 
-			if (Scene::I->CanGoNextVoxel(vertexIndex.Up())) {
+			if (Scene::I->CanGoNextVoxel(vertexIndex)) {
 				continue;
 			}
 
@@ -130,8 +130,8 @@ void Agent::UpdatePosition()
 				both++;
 			}
 
-			Index neighborX = vertexIndex + Index{ 0, idx[i], 1 };
-			Index neighborZ = vertexIndex + Index{ idz[i], 0, 1 };
+			Index neighborX = vertexIndex + Index{ 0, idx[i], 0 };
+			Index neighborZ = vertexIndex + Index{ idz[i], 0, 0 };
 			if (both == 2) {
 				if (!Scene::I->CanGoNextVoxel(neighborZ) && Scene::I->CanGoNextVoxel(neighborX)) {
 					mVelocity.z = mNewVelocity.z;
@@ -147,7 +147,7 @@ void Agent::UpdatePosition()
 			const Vec3& vertexPos = nextPos + Vec3{ mdx[i], 0.f, mdz[i] };
 			const Index& vertexIndex = Scene::I->GetVoxelIndex(vertexPos);
 
-			if (!Scene::I->CanGoNextVoxel(vertexIndex.Up())) {
+			if (!Scene::I->CanGoNextVoxel(vertexIndex)) {
 				mVelocity = -mVelocity;
 				break;
 			}
@@ -488,7 +488,6 @@ void Agent::RePlanningToPathAvoidStatic(const Index& crntPathIndex)
 		}
 
 		Index nextPathIndex = Scene::I->GetVoxelIndex(mGlobalPath[mGlobalPath.size() - i]);
-		VoxelState nextPathUpVoxelState = Scene::I->GetVoxelState(nextPathIndex.Up());
 		if (!Scene::I->CanGoNextVoxel(nextPathIndex)) {
 			for (int j = 0; j < i; ++j) {
 				mGlobalPathCache.erase(Scene::I->GetVoxelIndex(mGlobalPath.back()));
@@ -1024,19 +1023,15 @@ void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap
 	std::unordered_map<Index, Vec3> copyMap = fieldMap;
 	
 	const float kDestLength = 2.f;
+	const int kMaxProximity = 3;
 	for (int k = 0; k < mOption.FieldLineCount; ++k) {
 		std::vector<std::pair<Index, Vec3>> temp{};
 		for (int i = 0; i < static_cast<int>(frontPos.size()); ++i) {
 			for (const auto& [index, dir] : copyMap) {
 				const Index nextIndex = index + frontIndex[i];
 				const Vec3 nextPos = Scene::I->GetVoxelPos(nextIndex);
-				//const Vec3 nnextPos = nextPos + dir * Grid::mkVoxelWidth;
-				//const Vec3 toDest = nextPos - mReader->GetDestPos();
-				//if (mFieldTypeMap[nextIndex] == FieldType::Reader) continue;
-				//if (toDest.Length() < kDestLength) { mFieldTypeMap[index] = FieldType::Reader; continue; }
-				//if (!Scene::I->CanGoNextVoxel(nnextPos)) continue;
-				if (Scene::I->GetProximityCost(nextIndex) >= 3) continue;
-				if (!Scene::I->CanGoNextVoxel(nextIndex.Up())) continue;
+				if (Scene::I->GetProximityCost(nextIndex) >= kMaxProximity) continue;
+				if (!Scene::I->CanGoNextVoxel(nextIndex)) continue;
 
 				const Vec3 pos = Scene::I->GetVoxelPos(index);
 				const Vec3 posDir = pos + dir;
@@ -1296,44 +1291,4 @@ Index AgentManager::FindEmptyDestVoxel(Agent* invoker)
 	}
 
 	return curPos;
-}
-
-Index AgentManager::RandomDest(int x, int z)
-{
-	const Vec3& cameraTargetPos = MAIN_CAMERA->GetTargetPosition();
-	const Index& cameraTargetIndex = Scene::I->GetVoxelIndex(cameraTargetPos);
-	int randZ = Math::RandInt(-x, x);
-	int randX = Math::RandInt(-z, z);
-	const Vec3& randPos = Scene::I->GetVoxelPos(Index{ randZ, randX, 0 });
-	float y = Scene::I->GetTerrainHeight(randPos.x, randPos.z);
-	const Index& randIndex = Scene::I->GetVoxelIndex(Vec3{ randPos.x, y, randPos.z });
-	return cameraTargetIndex.XZ() + randIndex;
-}
-
-void AgentManager::ShuffleMoveToPath()
-{
-	std::unordered_set<Index> usedPos{};
-	for (auto agent : mAgents) {
-		Index newPos = RandomDest(10, 0);
-		while (usedPos.count(newPos)) {
-			newPos = RandomDest(10, 0);
-		}
-		usedPos.insert(newPos);
-
-		agent->ReadyPlanningToPath(newPos);
-	}
-
-	usedPos.clear();
-	for (auto agent : mAgents) {
-		Index newPos = RandomDest(10, 0);
-		while (usedPos.count(newPos)) {
-			newPos = RandomDest(10, 0);
-		}
-		usedPos.insert(newPos);
-
-		std::vector<Vec3> path = agent->PathPlanningToAstar(newPos);
-		if (!path.empty()) {
-			agent->SetPath(path);
-		}
-	}
 }

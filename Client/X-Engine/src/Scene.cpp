@@ -863,7 +863,7 @@ void Scene::PopObjectBuffer()
 
 bool Scene::CanGoNextVoxel(const Index& pos) const
 {
-	VoxelState state = GetVoxelState(pos);
+	VoxelState state = GetVoxelState(pos.Up());
 
 	if (state == VoxelState::Static || state == VoxelState::Dynamic) {
 		return false;

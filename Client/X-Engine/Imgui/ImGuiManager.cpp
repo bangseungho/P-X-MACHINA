@@ -422,10 +422,6 @@ void ImGuiAgentFunc::Execute(GameObject* selectedObject)
 		}
 
 		ImGui::SameLine(0, spacing); // 같은 줄에서 버튼을 이어서 배치
-
-		if (ImGui::Button("Shuffle", buttonSize)) {
-			AgentManager::I->ShuffleMoveToPath();
-		}
 	}
 
 	//UpdateGuizmo();

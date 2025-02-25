@@ -274,12 +274,7 @@ public:
 	std::unordered_map<Index, int> CheckAgentIndex(const Index& index, Agent* invoker);
 	void PickAgent(Agent** agent);
 	Index FindEmptyDestVoxel(Agent* agent);
-
-public:
-	Index RandomDest(int x, int z);
-	void ShuffleMoveToPath();
 };
-
 #pragma endregion
 
 template<typename T>
