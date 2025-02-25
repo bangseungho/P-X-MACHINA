@@ -70,6 +70,7 @@ public:
 struct AgentOption {
 	float		AgentSpeed = 3.5f;
 	int			ClimbHeight = 0;
+	int			FieldLineCount = 5;
 	Heuristic	Heuri = Heuristic::Manhattan;
 };
 
@@ -253,6 +254,7 @@ public:
 	void SetAgentPrefVelocity(int agentNo, const Vec3& prefVelocity) { mAgents[agentNo]->mPrefVelocity = prefVelocity; }
 	void SetClimbHeightAllAgent(int height);
 	void SetAgentSpeedAllAgent(float speed);
+	void SetFieldLineCount(int count) { mOption.FieldLineCount = count; }
 
 public:
 	void Start();

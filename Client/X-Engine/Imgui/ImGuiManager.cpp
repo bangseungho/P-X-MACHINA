@@ -379,6 +379,17 @@ void ImGuiAgentFunc::Execute(GameObject* selectedObject)
 		}
 	}
 
+	// all allowed height
+	{
+		int value = AgentManager::I->mOption.FieldLineCount;
+		ImGui::Text("FieldLineCount :"); // 안내 텍스트
+		ImGui::SameLine(mTextSpacing);
+		if (ImGui::InputInt("##int_FieldLineCount", &value, 1, 10)) {
+			value = max(0, value);
+			AgentManager::I->SetFieldLineCount(value);
+		}
+	}
+
 	{
 		bool value = PathOption::I->GetStartFlag();
 		ImGui::Checkbox("StartFlag", &value);

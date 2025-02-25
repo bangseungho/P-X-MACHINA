@@ -861,6 +861,11 @@ void Agent::UpdateFollowField()
 		return;
 	}
 
+	constexpr static float kMaxDistToDest = 10.f;
+	if ((mDestPos - mObject->GetPosition()).Length() < kMaxDistToDest) {
+		return;
+	}
+
 	const FieldType nextFieldType = AgentManager::I->GetFieldType(mVoxelIndex);
 	const Vec3 toReader = mReader->GetWorldPosition() - mObject->GetPosition();
 
@@ -1009,9 +1014,9 @@ void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap
 	std::unordered_map<Index, Vec3> copyMap = fieldMap;
 
 	const float kDestLength = 2.f;
-	for (int k = 0; k < 5; ++k) {
+	for (int k = 0; k < mOption.FieldLineCount; ++k) {
+		std::vector<std::pair<Index, Vec3>> temp{};
 		for (int i = 0; i < static_cast<int>(frontPos.size()); ++i) {
-			std::vector<std::pair<Index, Vec3>> temp{};
 			for (const auto& [index, pos] : copyMap) {
 				const Vec3 nextPos = pos + frontPos[i];
 				const Vec3 toDest = nextPos - mReader->GetDestPos();
@@ -1024,12 +1029,12 @@ void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap
 
 				temp.push_back({ index + frontIndex[i], nextPos });
 			}
+		}
 
-			for (const auto& v : temp) {
-				copyMap.insert(v);
-				mFieldTypeMap[v.first] = FieldType::Reader;
-				mReader->mOpenList.push_back(v.first);
-			}
+		for (const auto& v : temp) {
+			copyMap.insert(v);
+			mFieldTypeMap[v.first] = FieldType::Reader;
+			mReader->mOpenList.push_back(v.first);
 		}
 	}
 
@@ -1053,7 +1058,13 @@ void AgentManager::PathPlanningToAStarOnlyReader(const Index& dest)
 		return;
 	}
 
-	mReader->ReadyPlanningToPath(mReader->GetVoxelIndex());
+	Vec3 totalPos{};
+	for (const auto agent : mAgents) {
+		totalPos += agent->GetWorldPosition();
+	}
+	totalPos /= mAgents.size();
+
+	mReader->ReadyPlanningToPath(Scene::I->GetVoxelIndex(totalPos));
 	mReader->PathPlanningToAstar(dest);
 	CopyFlowField(mReader->GetFieldMap());
 
