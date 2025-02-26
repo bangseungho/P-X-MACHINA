@@ -21,6 +21,16 @@ namespace {
 			std::pow(dest.Y - start.Y, 2) +
 			std::pow(dest.Z - start.Z, 2)));
 	}
+
+	int GetSide2D(const Vec3& A, const Vec3& B, const Vec3& P) {
+		Vec3 D = { B.x - A.x, B.y - A.y, B.z - A.z };
+		Vec3 W = { P.x - A.x, P.y - A.y, P.z - A.z };
+		float cross = D.x * W.z - D.z * W.x;
+
+		if (cross > 0) return 1;   // 왼쪽
+		if (cross < 0) return -1;  // 오른쪽
+		return 0;  // 직선 위
+	}
 }
 
 void Agent::ClearPathList()
@@ -62,13 +72,26 @@ void Agent::Start()
 void Agent::Update()
 {
 	mObjectPos = mObject->GetPosition();
+	mVoxelIndex = Scene::I->GetVoxelIndex(mObjectPos);
+
+	if (!mReader) {
+		return;
+	}
 
 	if (!Vector3::IsZero(mStartPos)) {
-		const Vec3 toDest = mDestPos - GetWorldPosition();
-		const Vec3 startToDest = mDestPos - mStartPos;
-		const float toDestLength = toDest.Length();
-		const float startToDestLength = startToDest.Length();
-		mOption.AgentSpeed = std::clamp(3.5f * toDestLength / startToDestLength, 2.5f, 3.5f);
+		//const Vec3 toDest = mDestPos - GetWorldPosition();
+		//const Vec3 startToDest = mDestPos - mStartPos;
+		//const float toDestLength = toDest.Length();
+		//const float startToDestLength = startToDest.Length();
+
+		//if (mReader) {
+			//const Vec3 toReader = mReader->GetWorldPosition() - mObjectPos;
+		//	const float lengthToReader = toReader.Length();
+		//	mOption.AgentSpeed = std::clamp(lengthToReader, 2.5f, 3.5f);
+		//}
+		//else {
+		//	mOption.AgentSpeed = 3.5f;
+		//}
 	}
 }
 
@@ -86,7 +109,6 @@ bool Compare(float a, float b, int flag)
 void Agent::UpdatePosition()
 {
 	const Vec3& objectPos = mObjectPos;
-	mVoxelIndex = Scene::I->GetVoxelIndex(objectPos);
 
 	if (!PathOption::I->GetStartFlag()) {
 		mIsStart = true;
@@ -204,10 +226,10 @@ std::vector<Vec3> Agent::PathPlanningToAstar(const Index& dest, const std::unord
 	}
 
 	SetDestIndex(dest);
-	std::stack<Index>	path{};
+	std::stack<Index>					path{};
 	std::unordered_map<Index, Index>	parent;
 	std::unordered_map<Index, float>	distance;
-	std::unordered_map<Index, bool>	visited;
+	std::unordered_map<Index, bool>		visited;
 
 	std::function<float(const Index&, const Index&)> heuristic{};
 
@@ -880,10 +902,33 @@ void Agent::UpdateFollowField()
 	}
 }
 
-void Agent::SetPreferredVelocity()
+void Agent::UpdateFormation(const Vec3& fieldDirection)
+{
+	if (!mReader) {
+		return;
+	}
+
+	Matrix mtxWorld = mReader->GetWorldMatrix();
+	Matrix translation = Matrix::CreateTranslation(mFormation);
+	Matrix mtxFormation = mtxWorld * translation;
+
+	const Vec3 formation = mtxFormation.Translation();
+	const Vec3 toFormation = formation - mObjectPos;
+	const Vec3 rightVec = fieldDirection.Cross(Vector3::Up);
+	const int direction = GetSide2D(mObjectPos, mObjectPos + rightVec, formation);
+
+	if (direction == 1) {
+		mOption.AgentSpeed = 2.5f;
+	}
+	else if(direction == -1) {
+		mOption.AgentSpeed = 3.5f;
+	}
+}
+
+void Agent::UpdatePrefVelocity()
 {
 	Vec3 fieldDirection = AgentManager::I->GetFieldDirection(mVoxelIndex);
-	
+
 	if (AgentManager::I->GetFieldType(mVoxelIndex) == FieldType::Reader) {
 		const int diffLineCount = mCrntLineCount - AgentManager::I->GetLineCount(mVoxelIndex);
 		const float kAngle = 20.f;
@@ -896,6 +941,8 @@ void Agent::SetPreferredVelocity()
 		}
 		fieldDirection = Vector3::Rotate(fieldDirection, Vector3::Up, angleToLine);
 	}
+
+	UpdateFormation(fieldDirection);
 
 	Vec3 toDest{};
 	if (Vector3::IsZero(fieldDirection) && AgentManager::I->mIsInit) {
@@ -996,7 +1043,7 @@ void AgentManager::Update()
 {
 	for (int i = 0; i < static_cast<int>(mAgents.size()); ++i) {
 		//mAgents[i]->UpdateFollowField();
-		mAgents[i]->SetPreferredVelocity();
+		mAgents[i]->UpdatePrefVelocity();
 	}
 
 	mKdTree->BuildAgentTree();
@@ -1009,16 +1056,6 @@ void AgentManager::Update()
 	for (int i = 0; i < static_cast<int>(mAgents.size()); ++i) {
 		mAgents[i]->UpdatePosition();
 	}
-}
-
-int GetSide2D(const Vec3& A, const Vec3& B, const Vec3& P) {
-	Vec3 D = { B.x - A.x, B.y - A.y, B.z - A.z };
-	Vec3 W = { P.x - A.x, P.y - A.y, P.z - A.z };
-	float cross = D.x * W.z - D.z * W.x;
-
-	if (cross > 0) return 1;   // 왼쪽
-	if (cross < 0) return -1;  // 오른쪽
-	return 0;  // 직선 위
 }
 
 void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap)
@@ -1037,17 +1074,17 @@ void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap
 		Index{0, -1, 0},
 	};
 
-	std::unordered_map<Index, Vec3> copyMap = fieldMap;
-	
 	const float kDestLength = 2.f;
-	const int kMaxProximity = 3;
+	const int kMaxProximity = 2;
 	for (int k = 1; k <= mOption.FieldLineCount; ++k) {
 		std::vector<std::pair<Index, Vec3>> temp{};
 		for (int i = 0; i < static_cast<int>(frontPos.size()); ++i) {
 			for (const auto& [index, dir] : fieldMap) {
 				const Index nextIndex = index + frontIndex[i] * k;
 				const Vec3 nextPos = Scene::I->GetVoxelPos(nextIndex);
+				const Vec3 nnextPos = nextPos + dir * Grid::mkVoxelWidth;
 				if (Scene::I->GetProximityCost(nextIndex) >= kMaxProximity) continue;
+				if (!Scene::I->CanGoNextVoxel(nnextPos)) continue;
 				if (!Scene::I->CanGoNextVoxel(nextIndex)) continue;
 
 				const Vec3 pos = Scene::I->GetVoxelPos(index);
@@ -1064,22 +1101,15 @@ void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap
 					mLineMap[nextIndex] = k + mOption.FieldLineCount + 1;
 				}
 
-				temp.push_back({ nextIndex, dir });
+				mFieldTypeMap[nextIndex] = FieldType::Reader;
+				mFieldMap.insert({nextIndex, dir});
+				mReader->mOpenList.push_back(nextIndex);
 			}
 		}
-
-		for (const auto& v : temp) {
-			copyMap.insert(v);
-		}
-	}
-
-	for (const auto& v : copyMap) {
-		mFieldMap[v.first] = v.second;
-		mFieldTypeMap[v.first] = FieldType::Reader;
-		mReader->mOpenList.push_back(v.first);
 	}
 
 	for (const auto& v : fieldMap) {
+		mFieldTypeMap[v.first] = FieldType::Reader;
 		mLineMap[v.first] = mOption.FieldLineCount + 1;
 		mReader->mFieldMap.insert(v);
 	}
@@ -1107,6 +1137,7 @@ void AgentManager::PathPlanningToAStarOnlyReader(const Index& dest)
 	CopyFlowField(mReader->GetFieldMap());
 
 	for (auto agent : mAgents) {
+		agent->SetFormation(mReader->GetWorldPosition() - agent->GetWorldPosition());
 		agent->SetCrntLineCount(0);
 		agent->SetStartPos(agent->GetWorldPosition());
 		agent->SetDestPos(mReader->GetDestPos());
@@ -1140,6 +1171,7 @@ void AgentManager::PathPlanningToFlowField(const Index& dest)
 				int proximityCost = Scene::I->GetProximityCost(nextPos) * PathOption::I->GetProximityWeight();
 				int nextCost = distance[curNode.second] + gkCost[dir] + proximityCost;
 
+				if (!Scene::I->CanGoNextVoxel(nextPos)) continue;
 				if (diffPosY > mOption.ClimbHeight) continue;
 				if (!distance.contains(nextPos)) distance[nextPos] = INT_MAX;
 				if (nextCost >= distance[nextPos]) continue;

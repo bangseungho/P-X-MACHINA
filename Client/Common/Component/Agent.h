@@ -68,7 +68,7 @@ public:
 
 
 struct AgentOption {
-	float		AgentSpeed = 3.5f;
+	float		AgentSpeed = 2.5f;
 	int			ClimbHeight = 0;
 	int			FieldLineCount = 5;
 	Heuristic	Heuri = Heuristic::Manhattan;
@@ -121,6 +121,8 @@ private:
 	Index				mDestIndex{};
 	Vec3				mDestPos{};
 
+	Vec3				mFormation{};
+
 	Vec3				mPathDir{};
 
 	std::vector<Index>	mCloseList{};
@@ -166,6 +168,7 @@ public:
 	void SetStartPos(const Vec3& startPos);
 	void SetReader(Agent* reader) { mReader = reader; }
 	void SetCrntLineCount(INT8 count) { mCrntLineCount = count; }
+	void SetFormation(const Vec3& formation) { mFormation = formation; }
 
 public:
 	std::vector<Vec3>	PathPlanningToAstar(const Index& dest, const std::unordered_map<Index, int>& avoidCostMap = {}, bool followReader = false, bool clearPathList = true, bool inputDest = true, int maxOpenNodeCount = 50000);
@@ -212,7 +215,8 @@ public:
 	void ComputeNeighbors();
 	void ComputeNewVelocity();
 	void UpdateFollowField();
-	void SetPreferredVelocity();
+	void UpdateFormation(const Vec3& fieldDirection);
+	void UpdatePrefVelocity();
 };
 
 enum class FieldType : UINT8 {
