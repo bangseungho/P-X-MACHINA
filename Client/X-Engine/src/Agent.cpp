@@ -882,16 +882,33 @@ void Agent::UpdateFollowField()
 
 void Agent::SetPreferredVelocity()
 {
-	const Vec3& nextPos = AgentManager::I->GetFlowFieldPos(mVoxelIndex);
+	Vec3 fieldDirection = AgentManager::I->GetFieldDirection(mVoxelIndex);
+	
+	if (AgentManager::I->GetFieldType(mVoxelIndex) == FieldType::Reader) {
+		const int diffLineCount = mCrntLineCount - AgentManager::I->GetLineCount(mVoxelIndex);
+		const float kAngle = 20.f;
+		float angleToLine{};
+		if (diffLineCount > 0) {
+			angleToLine = kAngle;
+		}
+		else if (diffLineCount < 0) {
+			angleToLine = -kAngle;
+		}
+		fieldDirection = Vector3::Rotate(fieldDirection, Vector3::Up, angleToLine);
+	}
 
 	Vec3 toDest{};
-	if (Vector3::IsZero(nextPos) && AgentManager::I->mIsInit) {
+	if (Vector3::IsZero(fieldDirection) && AgentManager::I->mIsInit) {
 		toDest = (mPrevNextPos - mObjectPos) * mOption.AgentSpeed;
 		mNewVelocity = toDest;
 		mUseRVO = false;
 	}
 	else {
-		toDest = nextPos * mOption.AgentSpeed;
+		if (!mCrntLineCount) {
+			mCrntLineCount = AgentManager::I->GetLineCount(mVoxelIndex);
+		}
+
+		toDest = fieldDirection * mOption.AgentSpeed;
 		mPrefVelocity = toDest;
 		mPrevNextPos = mObjectPos;
 		mUseRVO = true;
@@ -1024,11 +1041,11 @@ void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap
 	
 	const float kDestLength = 2.f;
 	const int kMaxProximity = 3;
-	for (int k = 0; k < mOption.FieldLineCount; ++k) {
+	for (int k = 1; k <= mOption.FieldLineCount; ++k) {
 		std::vector<std::pair<Index, Vec3>> temp{};
 		for (int i = 0; i < static_cast<int>(frontPos.size()); ++i) {
-			for (const auto& [index, dir] : copyMap) {
-				const Index nextIndex = index + frontIndex[i];
+			for (const auto& [index, dir] : fieldMap) {
+				const Index nextIndex = index + frontIndex[i] * k;
 				const Vec3 nextPos = Scene::I->GetVoxelPos(nextIndex);
 				if (Scene::I->GetProximityCost(nextIndex) >= kMaxProximity) continue;
 				if (!Scene::I->CanGoNextVoxel(nextIndex)) continue;
@@ -1036,31 +1053,41 @@ void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap
 				const Vec3 pos = Scene::I->GetVoxelPos(index);
 				const Vec3 posDir = pos + dir;
 				const int side2D = GetSide2D(pos, posDir, nextPos);
-				if (side2D == 0) continue;
 
-				temp.push_back({ index + frontIndex[i], dir });
+				if (side2D == 0) {
+					continue;
+				}
+				else if (side2D == 1) {
+					mLineMap[nextIndex] = -k + mOption.FieldLineCount + 1;
+				}
+				else{
+					mLineMap[nextIndex] = k + mOption.FieldLineCount + 1;
+				}
+
+				temp.push_back({ nextIndex, dir });
 			}
 		}
 
 		for (const auto& v : temp) {
 			copyMap.insert(v);
-			mFieldTypeMap[v.first] = FieldType::Reader;
-			mReader->mOpenList.push_back(v.first);
 		}
 	}
 
 	for (const auto& v : copyMap) {
-		mFlowFieldMap[v.first] = v.second;
+		mFieldMap[v.first] = v.second;
+		mFieldTypeMap[v.first] = FieldType::Reader;
+		mReader->mOpenList.push_back(v.first);
 	}
 
 	for (const auto& v : fieldMap) {
+		mLineMap[v.first] = mOption.FieldLineCount + 1;
 		mReader->mFieldMap.insert(v);
 	}
 }
 
 void AgentManager::PushFlowField(const Index& index, const Vec3& pos)
 {
-	mFlowFieldMap.insert({ index, pos });
+	mFieldMap.insert({ index, pos });
 }
 
 void AgentManager::PathPlanningToAStarOnlyReader(const Index& dest)
@@ -1080,6 +1107,7 @@ void AgentManager::PathPlanningToAStarOnlyReader(const Index& dest)
 	CopyFlowField(mReader->GetFieldMap());
 
 	for (auto agent : mAgents) {
+		agent->SetCrntLineCount(0);
 		agent->SetStartPos(agent->GetWorldPosition());
 		agent->SetDestPos(mReader->GetDestPos());
 	}
@@ -1119,7 +1147,7 @@ void AgentManager::PathPlanningToFlowField(const Index& dest)
 				pq.push({ nextCost, nextPos });
 				distance[nextPos] = nextCost;
 
-				mFlowFieldMap.insert({ nextPos, Vector3::Normalized(Scene::I->GetVoxelPos(curNode.second) - Scene::I->GetVoxelPos(nextPos)) });
+				mFieldMap.insert({ nextPos, Vector3::Normalized(Scene::I->GetVoxelPos(curNode.second) - Scene::I->GetVoxelPos(nextPos)) });
 				mFieldTypeMap.insert({ nextPos, FieldType::Flower });
 			}
 		}

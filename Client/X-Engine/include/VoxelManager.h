@@ -88,6 +88,7 @@ public:
 	RenderMode GetRenderMode() const { return mOption.RenderMode; }
 	const std::pair<float, float> GetSelectedVoxelEdgeCost() const { return mSelectedVoxelEdgeCost; }
 	int GetSelectedVoxelProximityCost() const { return mSelectedVoxelProximityCost; }
+	int GetLineCount() const;
 
 public:
 	void SetRenderVoxelRows(int rows) { CalcRenderVoxelCount(rows); UpdateRenderVoxels(mCenterPos, false); }

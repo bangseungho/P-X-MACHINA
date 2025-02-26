@@ -105,6 +105,7 @@ public:
 private:
 	Agent* mReader{};
 	std::unordered_map<Index, Vec3> mFieldMap{};
+	INT8 mCrntLineCount{};
 
 	std::vector<Vec3>	mGlobalPath{};
 	std::vector<Vec3>	mLocalPath{};
@@ -146,6 +147,7 @@ public:
 	const Index		GetPathIndex(int index) const;
 	const Index		GetDestIndex() const { return mDestIndex; }
 	const Vec3		GetDestPos() const { return mDestPos; }
+	const int		GetLineCount() const { return mCrntLineCount; }
 	const Matrix	GetWorldMatrix() const { return mObject->GetWorldTransform(); }
 	const Vec3		GetWorldPosition() const { return mObject->GetPosition(); }
 	Vec3			GetWorldPosition()  { return mObject->GetPosition(); }
@@ -163,6 +165,7 @@ public:
 	void SetStartIndex(const Index& startIndex);
 	void SetStartPos(const Vec3& startPos);
 	void SetReader(Agent* reader) { mReader = reader; }
+	void SetCrntLineCount(INT8 count) { mCrntLineCount = count; }
 
 public:
 	std::vector<Vec3>	PathPlanningToAstar(const Index& dest, const std::unordered_map<Index, int>& avoidCostMap = {}, bool followReader = false, bool clearPathList = true, bool inputDest = true, int maxOpenNodeCount = 50000);
@@ -229,7 +232,8 @@ public:
 
 private:
 	sptr<class KdTree> mKdTree{};
-	std::unordered_map<Index, Vec3> mFlowFieldMap{};
+	std::unordered_map<Index, Vec3> mFieldMap{};
+	std::unordered_map<Index, INT8> mLineMap{};
 	std::unordered_map<Index, FieldType> mFieldTypeMap{};
 
 	int mAgentIDs{};
@@ -246,10 +250,9 @@ public:
 public:
 	template<typename T>
 	const T GetValueToIndex(const std::unordered_map<Index, T>& map, const Index& index) const;
-	const Vec3& GetFlowFieldPos(const Index& index) const { return GetValueToIndex(mFlowFieldMap, index); };
+	const Vec3& GetFieldDirection(const Index& index) const { return GetValueToIndex(mFieldMap, index); };
 	FieldType GetFieldType(const Index& index) const { return GetValueToIndex(mFieldTypeMap, index); };
-	//int GetOpenListMinusCost(const Index& index) const { return GetValueToIndex(mOpenListMinusCost, index); };
-	//int GetPrevPathMinusCost(const Index& index) const { return GetValueToIndex(mPrevPathMinusCost, index); };
+	INT8 GetLineCount(const Index& index) const { return GetValueToIndex(mLineMap, index); };
 
 public:
 	void SetAgentPrefVelocity(int agentNo, const Vec3& prefVelocity) { mAgents[agentNo]->mPrefVelocity = prefVelocity; }
@@ -262,7 +265,7 @@ public:
 	void Update();
 
 public:
-	void ClearFlowField() { mFlowFieldMap.clear(); mFieldTypeMap.clear(); }
+	void ClearFlowField() { mFieldMap.clear(); mFieldTypeMap.clear(); mLineMap.clear(); }
 	void CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap);
 	void PushFlowField(const Index& index, const Vec3& pos);
 	void PathPlanningToAStarOnlyReader(const Index& dest);

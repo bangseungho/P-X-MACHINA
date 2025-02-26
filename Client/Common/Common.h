@@ -703,6 +703,14 @@ struct Index
 		return ret;
 	}
 
+	Index operator*(int value) const {
+		Index ret;
+		ret.Z = Z * value;
+		ret.X = X * value;
+		ret.Y = Y * value;
+		return ret;
+	}
+
 	Index& operator-=(const Index& other) {
 		Z -= other.Z;
 		X -= other.X;

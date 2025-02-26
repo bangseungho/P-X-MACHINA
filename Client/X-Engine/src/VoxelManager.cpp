@@ -238,6 +238,11 @@ void VoxelManager::UpdateCreateMode(VoxelState selectedVoxelState)
 	Scene::I->UpdateVoxelsProximityCost(mSelectedVoxel);
 }
 
+int VoxelManager::GetLineCount() const
+{
+	return static_cast<int>(AgentManager::I->GetLineCount(mSelectedVoxel));
+}
+
 void VoxelManager::UpdateRemoveMode(VoxelState selectedVoxelState)
 {
 	if (!mHoldingClick || mUsedCreateModeVoxels.count(mSelectedVoxel.XZ())) {

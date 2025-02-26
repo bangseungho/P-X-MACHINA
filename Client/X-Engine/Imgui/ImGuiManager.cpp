@@ -181,6 +181,7 @@ void ImGuiVoxelFunc::Execute(GameObject* selectedObject)
 	ImGui::Text("Proximity Cost : %d", VoxelManager::I->GetSelectedVoxelProximityCost());
 	ImGui::Text("RowEdge Cost : %.1f", VoxelManager::I->GetSelectedVoxelEdgeCost().first);
 	ImGui::Text("ColEdge Cost : %.1f", VoxelManager::I->GetSelectedVoxelEdgeCost().second);
+	ImGui::Text("Line Count : %d", VoxelManager::I->GetLineCount());
 
     // voxel
     const VoxelState selectedVoxelState = Scene::I->GetVoxelState(selectedVoxelIndex);
@@ -322,10 +323,13 @@ void ImGuiAgentFunc::Execute(GameObject* selectedObject)
 	const Index& crntAgentIndex = Scene::I->GetVoxelIndex(crntAgentPos);
 
 	// index
-	ImGui::Text("Index : x = %d, y = %d, z = %d", crntAgentIndex.X, crntAgentIndex.Y, crntAgentIndex.Z);
+	ImGui::Text("Idx : x = %d, y = %d, z = %d", crntAgentIndex.X, crntAgentIndex.Y, crntAgentIndex.Z);
 
 	// position
 	ImGui::Text("Pos : x = %.2f, y = %.2f, z = %.2f", crntAgentPos.x, crntAgentPos.y, crntAgentPos.z);
+
+	// line
+	ImGui::Text("Line :  %d", mCrntAgent->GetLineCount() );
 
 	// heuristic
 	{
