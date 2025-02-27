@@ -342,14 +342,14 @@ void ImGuiAgentFunc::Execute(GameObject* selectedObject)
 	}
 
 	// agent speed
-	{
-		float value = mCrntAgent->mOption.AgentSpeed;
-		ImGui::Text("AgentSpeed :"); // 안내 텍스트
-		ImGui::SameLine(mTextSpacing);
-		if (ImGui::InputFloat("##float_AgentSpeed", &value, 0.5f, 1.0f, "%.3f")) {
-			mCrntAgent->mOption.AgentSpeed = max(0.f, value);
-		}
-	}
+	//{
+	//	float value = mCrntAgent->mOption.AgentSpeed;
+	//	ImGui::Text("AgentSpeed :"); // 안내 텍스트
+	//	ImGui::SameLine(mTextSpacing);
+	//	if (ImGui::InputFloat("##float_AgentSpeed", &value, 0.5f, 1.0f, "%.3f")) {
+	//		mCrntAgent->mOption.AgentSpeed = max(0.f, value);
+	//	}
+	//}
 
 	// allowed height
 	{
@@ -362,15 +362,15 @@ void ImGuiAgentFunc::Execute(GameObject* selectedObject)
 	}
 
 	// all agent speed
-	{
-		float value = AgentManager::I->mOption.AgentSpeed;
-		ImGui::Text("All AgentSpeed :"); // 안내 텍스트
-		ImGui::SameLine(mTextSpacing);
-		if (ImGui::InputFloat("##float_AllAgentSpeed", &value, 0.5f, 1.0f, "%.3f")) {
-			value = max(0.f, value);
-			AgentManager::I->SetAgentSpeedAllAgent(value);
-		}
-	}
+	//{
+	//	float value = AgentManager::I->mOption.AgentSpeed;
+	//	ImGui::Text("All AgentSpeed :"); // 안내 텍스트
+	//	ImGui::SameLine(mTextSpacing);
+	//	if (ImGui::InputFloat("##float_AllAgentSpeed", &value, 0.5f, 1.0f, "%.3f")) {
+	//		value = max(0.f, value);
+	//		AgentManager::I->SetAgentSpeedAllAgent(value);
+	//	}
+	//}
 
 	// all allowed height
 	{

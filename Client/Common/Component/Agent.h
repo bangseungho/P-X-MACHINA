@@ -101,11 +101,14 @@ class Agent : public Component {
 
 public:
 	AgentOption mOption{};
+	float mLengthNextDirPath{};
 
 private:
 	Agent* mReader{};
 	std::unordered_map<Index, Vec3> mFieldMap{};
 	INT8 mCrntLineCount{};
+
+	std::vector<std::pair<Vec3, Vec3>> mDirPath{};
 
 	std::vector<Vec3>	mGlobalPath{};
 	std::vector<Vec3>	mLocalPath{};
@@ -217,6 +220,7 @@ public:
 	void UpdateFollowField();
 	void UpdateFormation(const Vec3& fieldDirection);
 	void UpdatePrefVelocity();
+	void UpdateSpeed(float average);
 };
 
 enum class FieldType : UINT8 {
@@ -233,6 +237,7 @@ class AgentManager : public Singleton<AgentManager> {
 public:
 	bool mIsInit{};
 	AgentOption mOption{};
+	std::vector<Vec3> mDirPath{};
 
 private:
 	sptr<class KdTree> mKdTree{};
@@ -254,7 +259,7 @@ public:
 public:
 	template<typename T>
 	const T GetValueToIndex(const std::unordered_map<Index, T>& map, const Index& index) const;
-	const Vec3& GetFieldDirection(const Index& index) const { return GetValueToIndex(mFieldMap, index); };
+	Vec3 GetFieldDirection(const Index& index) const { return GetValueToIndex(mFieldMap, index); };
 	FieldType GetFieldType(const Index& index) const { return GetValueToIndex(mFieldTypeMap, index); };
 	INT8 GetLineCount(const Index& index) const { return GetValueToIndex(mLineMap, index); };
 
@@ -262,6 +267,7 @@ public:
 	void SetAgentPrefVelocity(int agentNo, const Vec3& prefVelocity) { mAgents[agentNo]->mPrefVelocity = prefVelocity; }
 	void SetClimbHeightAllAgent(int height);
 	void SetAgentSpeedAllAgent(float speed);
+	void SetDirPathAllAgent(std::vector<std::pair<Vec3, Vec3>> path);
 	void SetFieldLineCount(int count) { mOption.FieldLineCount = count; }
 
 public:
@@ -269,7 +275,13 @@ public:
 	void Update();
 
 public:
-	void ClearFlowField() { mFieldMap.clear(); mFieldTypeMap.clear(); mLineMap.clear(); }
+	void ClearFlowField() {
+		mFieldMap.clear(); 
+		mFieldTypeMap.clear(); 
+		mLineMap.clear(); 
+		mDirPath.clear();
+	}
+
 	void CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap);
 	void PushFlowField(const Index& index, const Vec3& pos);
 	void PathPlanningToAStarOnlyReader(const Index& dest);
