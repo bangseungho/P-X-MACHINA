@@ -11,6 +11,12 @@ enum class Heuristic : UINT8 {
 	Manhattan = 0,
 	Euclidean,
 };
+
+enum class FieldType : UINT8 {
+	None = 0,
+	Reader,
+	Flower,
+};
 #pragma endregion
 
 
@@ -21,6 +27,31 @@ struct PQNode {
 	float F{};
 	float G{};
 	Index	Pos{};
+};
+
+struct AgentOption {
+	float		AgentSpeed = 2.5f;
+	int			ClimbHeight = 0;
+	int			FieldLineCount = 5;
+	Heuristic	Heuri = Heuristic::Manhattan;
+};
+
+struct Plane {
+public:
+	Vec3 Point{};
+	Vec3 Normal{};
+
+public:
+	Plane() {}
+};
+
+struct Line {
+public:
+	Vec3 Point{};
+	Vec3 Direction{};
+
+public:
+	Line() {}
 };
 #pragma endregion
 
@@ -67,32 +98,6 @@ public:
 };
 
 
-struct AgentOption {
-	float		AgentSpeed = 2.5f;
-	int			ClimbHeight = 0;
-	int			FieldLineCount = 5;
-	Heuristic	Heuri = Heuristic::Manhattan;
-};
-
-
-struct Plane {
-public:
-	Vec3 Point{};
-	Vec3 Normal{};
-
-public:
-	Plane() {}
-};
-
-struct Line {
-public:
-	Vec3 Point{};
-	Vec3 Direction{};
-
-public:
-	Line() {}
-};
-
 class Agent : public Component {
 	COMPONENT(Agent, Component)
 
@@ -101,9 +106,9 @@ class Agent : public Component {
 
 public:
 	AgentOption mOption{};
-	float mLengthNextDirPath{};
 
 private:
+	// Path	
 	Agent* mReader{};
 	std::unordered_map<Index, Vec3> mFieldMap{};
 	INT8 mCrntLineCount{};
@@ -136,6 +141,22 @@ private:
 	float				mAngleSpeedRatio{};
 	int					mAgentID{};
 
+	// RVO
+	std::vector<std::pair<float, const Agent*>> mAgentNeighbors{};
+	std::vector<Plane> mORCAPlanes{};
+	int		mMaxNeighbors{};
+	float	mNeighborDist{};
+	float	mTimeHorizon{};
+	float	mRadius{};
+	float	mMaxSpeed{};
+
+	Vec3	mVelocity{};
+	Vec3	mNewVelocity{};
+	Vec3	mPrefVelocity{};
+	Vec3	mPrevNextPos{};
+	float	mNewVelocityY{};
+	bool	mUseRVO{};
+
 private:
 	static constexpr int mkAvoidForwardStaticObjectCount = 3;
 
@@ -144,20 +165,22 @@ public:
 	virtual void Update() override;
 
 public:
-	void UpdatePosition();
-	
+	bool			CheckContainNodeInField(const Index& index) const { return mFieldMap.count(index); }
+	bool			IsStart() const { return mIsStart; }
+	float			GetRadius() const { return mRadius; }
+	int				GetLineCount() const { return mCrntLineCount; }
+	Vec3			GetWorldPosition() { return mObject->GetPosition(); }
+	float			GetEdgeCost(const Index& nextPos, const Index& dir);
+
 public:
-	const bool		CheckContainNodeInField(const Index& index) const { return mFieldMap.count(index); }
-	const bool		IsStart() const { return mIsStart; }
-	const Index		GetPathIndex(int index) const;
-	const Index		GetDestIndex() const { return mDestIndex; }
-	const Vec3		GetDestPos() const { return mDestPos; }
-	const int		GetLineCount() const { return mCrntLineCount; }
-	const Matrix	GetWorldMatrix() const { return mObject->GetWorldTransform(); }
-	const Vec3		GetWorldPosition() const { return mObject->GetPosition(); }
-	Vec3			GetWorldPosition()  { return mObject->GetPosition(); }
-	const Vec3		GetPathDirection() const { return mPathDir; }
-	const Index		GetVoxelIndex() const { return mVoxelIndex; }
+	const Index&	GetPathIndex(int index) const;
+	const Index&	GetDestIndex() const { return mDestIndex; }
+	const Index&	GetVoxelIndex() const { return mVoxelIndex; }
+	const Vec3&		GetDestPos() const { return mDestPos; }
+	const Vec3&		GetVelocity() const { return mVelocity; }
+	const Vec3&		GetWorldPosition() const { return mObject->GetPosition(); }
+	const Vec3&		GetPathDirection() const { return mPathDir; }
+	const Matrix&	GetWorldMatrix() const { return mObject->GetWorldTransform(); }
 	const std::unordered_map<Index, Vec3>& GetFieldMap() const { return mFieldMap; }
 
 public:
@@ -172,62 +195,35 @@ public:
 	void SetReader(Agent* reader) { mReader = reader; }
 	void SetCrntLineCount(INT8 count) { mCrntLineCount = count; }
 	void SetFormation(const Vec3& formation) { mFormation = formation; }
+	void SetRimFactor(float factor) { mObject->mObjectCB.RimFactor = factor; }
+	void SetPath(std::vector<Vec3>& path) { mGlobalPath = path; }
 
 public:
+	// Path
 	std::vector<Vec3>	PathPlanningToAstar(const Index& dest, const std::unordered_map<Index, int>& avoidCostMap = {}, bool followReader = false, bool clearPathList = true, bool inputDest = true, int maxOpenNodeCount = 50000);
 	void				ReadyPlanningToPath(const Index& start);
-	void				SetPath(std::vector<Vec3>& path) { mGlobalPath = path; }
 	bool				PickAgent();
 	void				RenderOpenList();
 	void				RenderCloseList();
 	void				ClearPathList();
 	void				ClearPath();
-	void				SetRimFactor(float factor) { mObject->mObjectCB.RimFactor = factor; }
+
+	// RVO
+	void				InsertAgentNeightbor(const Agent* agent, float& rangeSq);
+	void				ComputeNeighbors();
+	void				ComputeNewVelocity();
+	void				UpdatePosition();
+	void				UpdateFollowField();
+	void				UpdatePrefVelocity();
 
 private:
-	bool	CheckCurNodeContainPathCache(const Index& curNode);
-	void	RayPathOptimize(std::stack<Index>& path, const Index& dest);
-	void	MakeSplinePath(std::vector<Vec3>& path);
-
-private:
-	void	RePlanningToPathAvoidStatic(const Index& crntPathIndex);
-	float	GetEdgeCost(const Index& nextPos, const Index& dir);
-
-private:
-	std::vector<std::pair<float, const Agent*>> mAgentNeighbors{};
-	std::vector<Plane> mORCAPlanes{};
-	int mMaxNeighbors{};
-	float mNeighborDist{};
-	float mTimeHorizon{};
-	float mRadius{};
-	float mMaxSpeed{};
-
-	Vec3 mVelocity{};
-	Vec3 mNewVelocity{};
-	Vec3 mPrefVelocity{};
-	Vec3 mPrevNextPos{};
-	float mNewVelocityY{};
-	bool mUseRVO{};
-
-public:
-	Vec3 GetVelocity() const { return mVelocity; }
-	float GetRadius() const { return mRadius; }
-
-public:
-	void InsertAgentNeightbor(const Agent* agent, float& rangeSq);
-	void ComputeNeighbors();
-	void ComputeNewVelocity();
-	void UpdateFollowField();
-	void UpdateFormation(const Vec3& fieldDirection);
-	void UpdatePrefVelocity();
-	void UpdateSpeed(float average);
+	// Post Process
+	bool CheckCurNodeContainPathCache(const Index& curNode);
+	void RayPathOptimize(std::stack<Index>& path, const Index& dest);
+	void MakeSplinePath(std::vector<Vec3>& path);
+	void RePlanningToPathAvoidStatic(const Index& crntPathIndex);
 };
 
-enum class FieldType : UINT8 {
-	None = 0,
-	Reader,
-	Flower,
-};
 
 class AgentManager : public Singleton<AgentManager> {
 	friend Singleton;
@@ -237,7 +233,6 @@ class AgentManager : public Singleton<AgentManager> {
 public:
 	bool mIsInit{};
 	AgentOption mOption{};
-	std::vector<Vec3> mDirPath{};
 
 private:
 	sptr<class KdTree> mKdTree{};
@@ -248,40 +243,28 @@ private:
 	int mAgentIDs{};
 	Agent* mReader{};
 	std::vector<Agent*> mAgents{};
-	bool mFinishAllAgentMoveToPath{};
-
-public:
-	const bool IsFinishAllAgentMoveToPath() const { return mFinishAllAgentMoveToPath; }
-
-public:
-	void AddAgent(Agent* agent);
 
 public:
 	template<typename T>
-	const T GetValueToIndex(const std::unordered_map<Index, T>& map, const Index& index) const;
-	Vec3 GetFieldDirection(const Index& index) const { return GetValueToIndex(mFieldMap, index); };
-	FieldType GetFieldType(const Index& index) const { return GetValueToIndex(mFieldTypeMap, index); };
-	INT8 GetLineCount(const Index& index) const { return GetValueToIndex(mLineMap, index); };
+	const T		GetValueToIndex(const std::unordered_map<Index, T>& map, const Index& index) const;
+	Vec3		GetFieldDirection(const Index& index) const { return GetValueToIndex(mFieldMap, index); };
+	INT8		GetLineCount(const Index& index) const { return GetValueToIndex(mLineMap, index); };
+	FieldType	GetFieldType(const Index& index) const { return GetValueToIndex(mFieldTypeMap, index); };
 
 public:
-	void SetAgentPrefVelocity(int agentNo, const Vec3& prefVelocity) { mAgents[agentNo]->mPrefVelocity = prefVelocity; }
-	void SetClimbHeightAllAgent(int height);
-	void SetAgentSpeedAllAgent(float speed);
-	void SetDirPathAllAgent(std::vector<std::pair<Vec3, Vec3>> path);
-	void SetFieldLineCount(int count) { mOption.FieldLineCount = count; }
+	void		SetAgentPrefVelocity(int agentNo, const Vec3& prefVelocity) { mAgents[agentNo]->mPrefVelocity = prefVelocity; }
+	void		SetClimbHeightAllAgent(int height);
+	void		SetAgentSpeedAllAgent(float speed);
+	void		SetDirPathAllAgent(std::vector<std::pair<Vec3, Vec3>> path);
+	void		SetFieldLineCount(int count) { mOption.FieldLineCount = count; }
 
 public:
 	void Start();
 	void Update();
 
 public:
-	void ClearFlowField() {
-		mFieldMap.clear(); 
-		mFieldTypeMap.clear(); 
-		mLineMap.clear(); 
-		mDirPath.clear();
-	}
-
+	void AddAgent(Agent* agent);
+	void ClearFlowField();
 	void CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap);
 	void PushFlowField(const Index& index, const Vec3& pos);
 	void PathPlanningToAStarOnlyReader(const Index& dest);
@@ -290,9 +273,9 @@ public:
 	void StartMoveToPath();
 	void RenderPathList();
 	void ClearPathList();
-	std::unordered_map<Index, int> CheckAgentIndex(const Index& index, Agent* invoker);
 	void PickAgent(Agent** agent);
 	Index FindEmptyDestVoxel(Agent* agent);
+	std::unordered_map<Index, int> CheckAgentIndex(const Index& index, Agent* invoker);
 };
 #pragma endregion
 

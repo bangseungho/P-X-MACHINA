@@ -31,6 +31,17 @@ namespace {
 		if (cross < 0) return -1;  // 오른쪽
 		return 0;  // 직선 위
 	}
+
+	bool CompareVoxel(float a, float b, int flag)
+	{
+		if (flag == 1) {
+			return a > b;
+		}
+		else if (flag == -1) {
+			return a < b;
+		}
+		return false;
+	}
 }
 
 void Agent::ClearPathList()
@@ -73,38 +84,8 @@ void Agent::Update()
 {
 	mObjectPos = mObject->GetPosition();
 	mVoxelIndex = Scene::I->GetVoxelIndex(mObjectPos);
-
-	if (!mReader) {
-		return;
-	}
-
-	if (!Vector3::IsZero(mStartPos)) {
-		//const Vec3 toDest = mDestPos - GetWorldPosition();
-		//const Vec3 startToDest = mDestPos - mStartPos;
-		//const float toDestLength = toDest.Length();
-		//const float startToDestLength = startToDest.Length();
-
-		//if (mReader) {
-			//const Vec3 toReader = mReader->GetWorldPosition() - mObjectPos;
-		//	const float lengthToReader = toReader.Length();
-		//	mOption.AgentSpeed = std::clamp(lengthToReader, 2.5f, 3.5f);
-		//}
-		//else {
-		//	mOption.AgentSpeed = 3.5f;
-		//}
-	}
 }
 
-bool Compare(float a, float b, int flag)
-{
-	if (flag == 1) {
-		return a > b;
-	}
-	else if (flag == -1) {
-		return a < b;
-	}
-	return false;
-}
 
 void Agent::UpdatePosition()
 {
@@ -143,11 +124,11 @@ void Agent::UpdatePosition()
 			const Vec3& obstaclePos = Scene::I->GetVoxelPos(vertexIndex);
 
 			int both{};
-			if (Compare(objectPos.x + mdx[i], obstaclePos.x + odx[i], idx[i])) {
+			if (CompareVoxel(objectPos.x + mdx[i], obstaclePos.x + odx[i], idx[i])) {
 				mVelocity.x = 0.f;
 				both++;
 			}
-			if (Compare(objectPos.z + mdz[i], obstaclePos.z + odz[i], idz[i])) {
+			if (CompareVoxel(objectPos.z + mdz[i], obstaclePos.z + odz[i], idz[i])) {
 				mVelocity.z = 0.f;
 				both++;
 			}
@@ -179,7 +160,7 @@ void Agent::UpdatePosition()
 	mObject->SetPosition(objectPos + mVelocity * DeltaTime());
 }
 
-const Index Agent::GetPathIndex(int index) const
+const Index& Agent::GetPathIndex(int index) const
 {
 	if (!mGlobalPath.empty() && mGlobalPath.size() > index) {
 		return Scene::I->GetVoxelIndex(mGlobalPath[mGlobalPath.size() - index - 1]);
@@ -446,7 +427,7 @@ void Agent::RayPathOptimize(std::stack<Index>& path, const Index& dest)
 							goto NoOptimizePath;
 						}
 						else if (state == VoxelState::Static) {
-							if (/*GetOnVoxelCount(voxel) >= mOption.AllowedHeight ||*/ prev.Y != y) {
+							if (prev.Y != y) {
 								optimizePath.push(prev);
 								now = prev;
 								goto NoOptimizePath;
@@ -904,29 +885,8 @@ void Agent::UpdateFollowField()
 		ReadyPlanningToPath(mVoxelIndex);
 		PathPlanningToAstar(mReader->mDestIndex, {}, true);
 		AgentManager::I->CopyFlowField(mFieldMap);
-		std::cout << "RePlan!\n";
 		return;
 	}
-}
-
-void Agent::UpdateFormation(const Vec3& fieldDirection)
-{
-	if (!mReader) {
-		return;
-	}
-
-	Matrix readerNoScaleMtxWorld = mReader->GetWorldMatrix();
-	readerNoScaleMtxWorld._11 = 1.f;
-	readerNoScaleMtxWorld._22 = 1.f;
-	readerNoScaleMtxWorld._33 = 1.f;
-
-	Matrix translation = Matrix::CreateTranslation(mFormation);
-	Matrix mtxFormation = translation * readerNoScaleMtxWorld;
-
-	const Vec3 formation = mtxFormation.Translation();
-	const Vec3 toFormation = formation - mObjectPos;
-	//const Vec3 rightVec = fieldDirection.Cross(Vector3::Up);
-	//const int direction = GetSide2D(mObjectPos, mObjectPos + rightVec, formation);
 }
 
 void Agent::UpdatePrefVelocity()
@@ -945,8 +905,6 @@ void Agent::UpdatePrefVelocity()
 		}
 		fieldDirection = Vector3::Rotate(fieldDirection, Vector3::Up, angleToLine);
 	}
-
-	UpdateFormation(fieldDirection);
 
 	Vec3 toDest{};
 	if (Vector3::IsZero(fieldDirection) && AgentManager::I->mIsInit) {
@@ -968,46 +926,6 @@ void Agent::UpdatePrefVelocity()
 	mNewVelocityY = toDest.y;
 }
 
-Vec3 GetIntersectionPoint(Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4)
-{
-	double d = (p1.x - p2.x) * (p3.z - p4.z) - (p1.z - p2.z) * (p3.x - p4.x);
-
-	// If d is zero, there is no intersection (parallel lines)
-	if (d == 0) return Vec3{};
-
-	// Calculate the intersection point
-	double pre = (p1.x * p2.z - p1.z * p2.x);
-	double post = (p3.x * p4.z - p3.z * p4.x);
-	double x = (pre * (p3.x - p4.x) - (p1.x - p2.x) * post) / d;
-	double z = (pre * (p3.z - p4.z) - (p1.z - p2.z) * post) / d;
-
-	// Return the intersection point (y is ignored)
-	return Vec3(x, 0, z);
-}
-
-
-void Agent::UpdateSpeed(float average)
-{
-	const Vec3 fieldDir = AgentManager::I->GetFieldDirection(mVoxelIndex);
-
-	if (mDirPath.empty()) {
-		return;
-	}
-
-	const int direction = GetSide2D(mDirPath.back().second, mDirPath.back().second + mDirPath.back().first, mObjectPos);
-	if (direction == -1) {
-		mDirPath.pop_back();
-		Vec3 value = GetIntersectionPoint(mObjectPos, mObjectPos + fieldDir, mDirPath.back().second, mDirPath.back().second + mDirPath.back().first);
-		mLengthNextDirPath = (mObjectPos - value).Length();
-	}
-	//else {
-	//	if (mLengthNextDirPath != 0.f) {
-	//		Vec3 value = GetIntersectionPoint(mObjectPos, mObjectPos + fieldDir, mDirPath.back().second, mDirPath.back().second + mDirPath.back().first);
-	//		mOption.AgentSpeed = std::clamp(mLengthNextDirPath * 2.5f + 1.f, 1.5f, 3.5f);
-	//	}
-	//}
-}
-
 void Agent::ClearPath()
 {
 	mGlobalPath.clear();
@@ -1016,7 +934,6 @@ void Agent::ClearPath()
 	mPrevPathMinusCost.clear();
 	mOpenListMinusCost.clear();
 	mFieldMap.clear();
-	mDirPath.clear();
 }
 
 bool Agent::PickAgent()
@@ -1108,27 +1025,32 @@ void AgentManager::Update()
 		mAgents[i]->UpdatePosition();
 	}
 
-	float length{};
 	for (int i = 0; i < static_cast<int>(mAgents.size()); ++i) {
 		mAgents[i]->UpdatePosition();
-		mAgents[i]->UpdateSpeed(1.f);
 	}
+}
+
+void AgentManager::ClearFlowField()
+{
+	mFieldMap.clear();
+	mFieldTypeMap.clear();
+	mLineMap.clear();
 }
 
 void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap)
 {
 	constexpr static std::array<const Vec3, 4> frontPos{
-		Vec3{0.f, 0.f, +Grid::mkVoxelWidth},
 		Vec3{+Grid::mkVoxelWidth, 0.f, 0.f},
-		Vec3{0.f, 0.f, -Grid::mkVoxelWidth},
 		Vec3{-Grid::mkVoxelWidth, 0.f, 0.f},
+		Vec3{0.f, 0.f, +Grid::mkVoxelWidth},
+		Vec3{0.f, 0.f, -Grid::mkVoxelWidth},
 	};
 
 	constexpr static std::array<const Index, 4> frontIndex{
-		Index{+1, 0, 0},
 		Index{0, +1, 0},
-		Index{-1, 0, 0},
 		Index{0, -1, 0},
+		Index{+1, 0, 0},
+		Index{-1, 0, 0},
 	};
 
 	const float kDestLength = 2.f;
@@ -1147,10 +1069,7 @@ void AgentManager::CopyFlowField(const std::unordered_map<Index, Vec3>& fieldMap
 				const Vec3 posDir = pos + dir;
 				const int side2D = GetSide2D(pos, posDir, nextPos);
 
-				if (side2D == 0) {
-					continue;
-				}
-				else if (side2D == 1) {
+				if (side2D == 1) {
 					mLineMap.insert({ nextIndex, -k + mOption.FieldLineCount + 1 });
 				}
 				else{

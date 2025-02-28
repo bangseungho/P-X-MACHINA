@@ -52,43 +52,34 @@ private:
 		}
 	};
 
-private:
-	std::set<Index, VoxelSort> mRenderVoxels{};
-	Agent*					mPickedAgent{};
-	bool					mReadyMakePath{ true };
-	bool					mHoldingClick{};
-
-private:
-	Index						mSelectedVoxel{};
-	Index						mCenterPos{};
-	int						mSelectedVoxelProximityCost{};
-	std::pair<float, float>	mSelectedVoxelEdgeCost{};
-
-private:
-	Index						mAboveVoxel{};
-
-private:
-	VoxelOption				mOption{};
-
-private:
-	std::vector<uptr<UploadBuffer<InstanceData>>> mInstanceBuffers{};
-	std::unordered_set<Index> mUsedCreateModeVoxels{};
 
 public:
 	static constexpr UINT mkMaxRenderVoxelCount = 60000;
 
-public:
-	const Index& GetSelectedVoxelPos() const { return mSelectedVoxel; }
-	Agent* GetPickedAgent() { return mPickedAgent; }
+private:
+	std::set<Index, VoxelSort>	mRenderVoxels{};
+	Agent*						mPickedAgent{};
+	bool						mReadyMakePath{ true };
+	bool						mHoldingClick{};
+	Index						mSelectedVoxel{};
+	Index						mCenterPos{};
+	int							mSelectedVoxelProximityCost{};
+	std::pair<float, float>		mSelectedVoxelEdgeCost{};
+	Index						mAboveVoxel{};
+	VoxelOption					mOption{};
+	std::vector<uptr<UploadBuffer<InstanceData>>> mInstanceBuffers{};
+	std::unordered_set<Index> mUsedCreateModeVoxels{};
 
 public:
-	int GetRenderVoxelRows() const { return mOption.RenderVoxelRows; }
-	int GetRenderVoxelHeight() const { return mOption.RenderVoxelHeight; }
-	CreateMode GetCreateMode() const { return mOption.CreateMode; }
-	RenderMode GetRenderMode() const { return mOption.RenderMode; }
+	const Index&	GetSelectedVoxelPos() const { return mSelectedVoxel; }
+	Agent*			GetPickedAgent() { return mPickedAgent; }
+	int				GetRenderVoxelRows() const { return mOption.RenderVoxelRows; }
+	int				GetRenderVoxelHeight() const { return mOption.RenderVoxelHeight; }
+	CreateMode		GetCreateMode() const { return mOption.CreateMode; }
+	RenderMode		GetRenderMode() const { return mOption.RenderMode; }
+	int				GetSelectedVoxelProximityCost() const { return mSelectedVoxelProximityCost; }
+	int				GetLineCount() const;
 	const std::pair<float, float> GetSelectedVoxelEdgeCost() const { return mSelectedVoxelEdgeCost; }
-	int GetSelectedVoxelProximityCost() const { return mSelectedVoxelProximityCost; }
-	int GetLineCount() const;
 
 public:
 	void SetRenderVoxelRows(int rows) { CalcRenderVoxelCount(rows); UpdateRenderVoxels(mCenterPos, false); }
